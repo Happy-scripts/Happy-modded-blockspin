@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -29,7 +30,73 @@ ScreenGui.Name = "BlockspinGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 2. Círculo FOV
+-- 2. PANTALLA DE CARGA (7 SEGUNDOS)
+local LoadingFrame = Instance.new("Frame")
+LoadingFrame.Name = "LoadingFrame"
+LoadingFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+LoadingFrame.Size = UDim2.new(0, 320, 0, 180)
+LoadingFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+LoadingFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+LoadingFrame.BorderSizePixel = 0
+LoadingFrame.Parent = ScreenGui
+
+local UICornerLoading = Instance.new("UICorner")
+UICornerLoading.CornerRadius = UDim.new(0, 12)
+UICornerLoading.Parent = LoadingFrame
+
+local LoadingTitle = Instance.new("TextLabel")
+LoadingTitle.Size = UDim2.new(1, 0, 0, 45)
+LoadingTitle.Position = UDim2.new(0, 0, 0, 15)
+LoadingTitle.BackgroundTransparency = 1
+LoadingTitle.Text = "⚡ HAPPY-MODDED ⚡"
+LoadingTitle.TextColor3 = Color3.fromRGB(255, 220, 0)
+LoadingTitle.TextSize = 18
+LoadingTitle.Font = Enum.Font.SourceSansBold
+LoadingTitle.Parent = LoadingFrame
+
+local LoadingSubTitle = Instance.new("TextLabel")
+LoadingSubTitle.Size = UDim2.new(1, 0, 0, 25)
+LoadingSubTitle.Position = UDim2.new(0, 0, 0, 55)
+LoadingSubTitle.BackgroundTransparency = 1
+LoadingSubTitle.Text = "Cargando script para Blockspin..."
+LoadingSubTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+LoadingSubTitle.TextSize = 13
+LoadingSubTitle.Font = Enum.Font.SourceSans
+LoadingSubTitle.Parent = LoadingFrame
+
+-- Barra de Progreso
+local BarBg = Instance.new("Frame")
+BarBg.Size = UDim2.new(0.85, 0, 0, 12)
+BarBg.Position = UDim2.new(0.075, 0, 0.6, 0)
+BarBg.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+BarBg.BorderSizePixel = 0
+BarBg.Parent = LoadingFrame
+
+local UICornerBarBg = Instance.new("UICorner")
+UICornerBarBg.CornerRadius = UDim.new(1, 0)
+UICornerBarBg.Parent = BarBg
+
+local BarFill = Instance.new("Frame")
+BarFill.Size = UDim2.new(0, 0, 1, 0)
+BarFill.BackgroundColor3 = Color3.fromRGB(255, 220, 0)
+BarFill.BorderSizePixel = 0
+BarFill.Parent = BarBg
+
+local UICornerBarFill = Instance.new("UICorner")
+UICornerBarFill.CornerRadius = UDim.new(1, 0)
+UICornerBarFill.Parent = BarFill
+
+local PercentLabel = Instance.new("TextLabel")
+PercentLabel.Size = UDim2.new(1, 0, 0, 20)
+PercentLabel.Position = UDim2.new(0, 0, 0.78, 0)
+PercentLabel.BackgroundTransparency = 1
+PercentLabel.Text = "0%"
+PercentLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+PercentLabel.TextSize = 12
+PercentLabel.Font = Enum.Font.SourceSansBold
+PercentLabel.Parent = LoadingFrame
+
+-- 3. Círculo FOV
 local FOVCircle = Instance.new("Frame")
 FOVCircle.Name = "FOVCircle"
 FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -51,7 +118,7 @@ FOVStroke.Thickness = 2
 FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 FOVStroke.Parent = FOVCircle
 
--- 3. Barra Flotante Principal
+-- 4. Barra Flotante Principal (Oculta hasta pasar la carga)
 local MainBar = Instance.new("Frame")
 MainBar.Name = "MainBar"
 MainBar.Size = UDim2.new(0, 390, 0, 35)
@@ -60,6 +127,7 @@ MainBar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MainBar.BackgroundTransparency = 0.2
 MainBar.BorderSizePixel = 0
 MainBar.Active = true
+MainBar.Visible = false
 MainBar.Parent = ScreenGui
 
 local UICornerBar = Instance.new("UICorner")
@@ -98,7 +166,7 @@ OpenMenuBtn.TextSize = 13
 OpenMenuBtn.Font = Enum.Font.SourceSansBold
 OpenMenuBtn.Parent = MainBar
 
--- 4. Menú Desplegable Rediseñado con Lateral
+-- 5. Menú Desplegable Rediseñado
 local MenuFrame = Instance.new("Frame")
 MenuFrame.Name = "MenuFrame"
 MenuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -178,7 +246,6 @@ EspectearPage.BackgroundTransparency = 1
 EspectearPage.Visible = false
 EspectearPage.Parent = MenuFrame
 
--- Función creadora de botones
 local function createMenuButton(parent, name, text, posY)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
@@ -202,9 +269,9 @@ end
 local AimbotBtn = createMenuButton(AimbotPage, "AimbotButton", "Aimbot 🎯: OFF", 0.02)
 local FOVBtn = createMenuButton(AimbotPage, "FOVButton", "FOV Circle 🟡: OFF", 0.12)
 
--- Slider FOV
+-- Slider FOV Más Grande (Fácil de mover)
 local FOVSliderFrame = Instance.new("Frame")
-FOVSliderFrame.Size = UDim2.new(0.9, 0, 0, 42)
+FOVSliderFrame.Size = UDim2.new(0.9, 0, 0, 55)
 FOVSliderFrame.Position = UDim2.new(0.05, 0, 0.22, 0)
 FOVSliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 FOVSliderFrame.BackgroundTransparency = 0.5
@@ -215,24 +282,28 @@ UICornerSlider.CornerRadius = UDim.new(0, 6)
 UICornerSlider.Parent = FOVSliderFrame
 
 local FOVLabel = Instance.new("TextLabel")
-FOVLabel.Size = UDim2.new(1, 0, 0, 16)
+FOVLabel.Size = UDim2.new(1, 0, 0, 20)
 FOVLabel.BackgroundTransparency = 1
 FOVLabel.Text = "Tamaño FOV: 100"
 FOVLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVLabel.TextSize = 12
+FOVLabel.TextSize = 13
 FOVLabel.Font = Enum.Font.SourceSansBold
 FOVLabel.Parent = FOVSliderFrame
 
 local SliderLine = Instance.new("Frame")
-SliderLine.Size = UDim2.new(0.8, 0, 0, 4)
-SliderLine.Position = UDim2.new(0.1, 0, 0.65, 0)
+SliderLine.Size = UDim2.new(0.85, 0, 0, 8) -- Línea más gruesa
+SliderLine.Position = UDim2.new(0.075, 0, 0.65, 0)
 SliderLine.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 SliderLine.BorderSizePixel = 0
 SliderLine.Parent = FOVSliderFrame
 
+local UICornerLine = Instance.new("UICorner")
+UICornerLine.CornerRadius = UDim.new(1, 0)
+UICornerLine.Parent = SliderLine
+
 local SliderKnob = Instance.new("TextButton")
 SliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
-SliderKnob.Size = UDim2.new(0, 12, 0, 12)
+SliderKnob.Size = UDim2.new(0, 24, 0, 24) -- Bolita el doble de grande
 SliderKnob.Position = UDim2.new(0.33, 0, 0.5, 0)
 SliderKnob.BackgroundColor3 = Color3.fromRGB(255, 230, 0)
 SliderKnob.Text = ""
@@ -242,11 +313,11 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
--- Lista Escroleable de Jugadores (Aimbot)
+-- Lista Escroleable
 local PlayerListScroll = Instance.new("ScrollingFrame")
 PlayerListScroll.Name = "PlayerListScroll"
-PlayerListScroll.Size = UDim2.new(0.95, 0, 0.62, 0)
-PlayerListScroll.Position = UDim2.new(0.025, 0, 0.35, 0)
+PlayerListScroll.Size = UDim2.new(0.95, 0, 0.58, 0)
+PlayerListScroll.Position = UDim2.new(0.025, 0, 0.39, 0)
 PlayerListScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 PlayerListScroll.BackgroundTransparency = 0.4
 PlayerListScroll.BorderSizePixel = 0
@@ -264,7 +335,23 @@ local ViewPlayersBtn = createMenuButton(EspectearPage, "ViewPlayersButton", "VIE
 local ViewNamesBtn = createMenuButton(EspectearPage, "ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.16)
 local ViewHealthBtn = createMenuButton(EspectearPage, "ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.27)
 ----------------------------------------------------
--- CAMBIO DE PESTAÑAS
+-- ANIMACIÓN PANTALLA DE CARGA (7 SEGUNDOS)
+----------------------------------------------------
+task.spawn(function()
+	local duration = 7
+	local steps = 100
+	for i = 1, steps do
+		task.wait(duration / steps)
+		BarFill.Size = UDim2.new(i / steps, 0, 1, 0)
+		PercentLabel.Text = tostring(i) .. "%"
+	end
+	
+	LoadingFrame:Destroy()
+	MainBar.Visible = true
+end)
+
+----------------------------------------------------
+-- CAMBIO DE PESTAÑAS Y CONTROLES
 ----------------------------------------------------
 TabAimbotBtn.MouseButton1Click:Connect(function()
 	AimbotPage.Visible = true
@@ -284,9 +371,6 @@ TabEspectearBtn.MouseButton1Click:Connect(function()
 	TabAimbotBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
 end)
 
-----------------------------------------------------
--- LÓGICA DE MOVIMIENTO DE BARRA (DRAG)
-----------------------------------------------------
 local function updateDrag(input)
 	local delta = input.Position - dragStart
 	MainBar.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -331,7 +415,7 @@ FOVBtn.MouseButton1Click:Connect(function()
 	FOVBtn.TextColor3 = fovEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
--- SLIDER LOGIC
+-- SLIDER MEJORADO
 local draggingSlider = false
 local function updateSlider(input)
 	local sliderX = SliderLine.AbsolutePosition.X
@@ -363,7 +447,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
--- LISTA DE JUGADORES Y ACCIONES (VER, ALEAR, FIJAR)
+-- LISTA DE JUGADORES Y ACCIONES
 ----------------------------------------------------
 local function updatePlayerList()
 	for _, child in ipairs(PlayerListScroll:GetChildren()) do
@@ -393,7 +477,7 @@ local function updatePlayerList()
 			pLabel.Font = Enum.Font.SourceSansBold
 			pLabel.Parent = row
 
-			-- Botón Ver (Espectear)
+			-- Botón Ver
 			local vBtn = Instance.new("TextButton")
 			vBtn.Size = UDim2.new(0.18, 0, 0.8, 0)
 			vBtn.Position = UDim2.new(0.38, 0, 0.1, 0)
@@ -421,7 +505,7 @@ local function updatePlayerList()
 				updatePlayerList()
 			end)
 
-			-- Botón Alear (Aliado / Ignorar)
+			-- Botón Alear
 			local aBtn = Instance.new("TextButton")
 			aBtn.Size = UDim2.new(0.18, 0, 0.8, 0)
 			aBtn.Position = UDim2.new(0.58, 0, 0.1, 0)
@@ -484,7 +568,7 @@ end)
 updatePlayerList()
 
 ----------------------------------------------------
--- SISTEMA ESP / VISUALES
+-- SISTEMA ESP
 ----------------------------------------------------
 local function getPlayerESP(player)
 	if not player.Character then return nil end
@@ -504,7 +588,6 @@ local function getPlayerESP(player)
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Name = "NameLabel"
 		nameLabel.Size = UDim2.new(1, 0, 0, 18)
-		nameLabel.Position = UDim2.new(0, 0, 0, 0)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Text = player.Name
 		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -520,7 +603,6 @@ local function getPlayerESP(player)
 		healthBg.Position = UDim2.new(0.15, 0, 0.4, 0)
 		healthBg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 		healthBg.BorderSizePixel = 1
-		healthBg.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		healthBg.Visible = false
 		healthBg.Parent = bGui
 
@@ -558,7 +640,6 @@ ViewPlayersBtn.MouseButton1Click:Connect(function()
 	viewPlayersEnabled = not viewPlayersEnabled
 	ViewPlayersBtn.Text = "VIEW PLAYERS 🔴: " .. (viewPlayersEnabled and "ON" or "OFF")
 	ViewPlayersBtn.TextColor3 = viewPlayersEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-	
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player.Character then
 			if viewPlayersEnabled then applyHighlight(player.Character) else removeHighlight(player.Character) end
@@ -605,79 +686,47 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- LÓGICA DE AIMBOT INSTANTÁNEO Y FIJADO
+-- BLOQUEO TOTAL DE CÁMARA Y AIMBOT
 ----------------------------------------------------
-local function isValidTarget(part, player)
-	if not part or not part.Parent then return false end
-	local humanoid = part.Parent:FindFirstChildOfClass("Humanoid")
-	if not humanoid or humanoid.Health <= 0 then return false end
-
-	-- Si está aleado, se ignora
-	if player and aliasedPlayers[player.UserId] then return false end
-
-	local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-	if not onScreen then return false end
+RunService.RenderStepped:Connect(function()
+	updateESP()
 	
-	if fovEnabled and not fixedTarget then
-		local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-		local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
-		if distance > fovRadius then return false end
-	end
-
-	return true
-end
-
-local function getTarget()
-	-- 1. Si hay un objetivo FIJADO manualmente
-	if fixedTarget then
-		if fixedTarget.Character then
-			local head = fixedTarget.Character:FindFirstChild("Head")
-			if isValidTarget(head, fixedTarget) then
-				return head
-			end
+	-- 1. Si hay un jugador FIJADO, la cámara queda bloqueada a él SIEMPRE (incluso sin activar Aimbot general)
+	if fixedTarget and fixedTarget.Character then
+		local targetHead = fixedTarget.Character:FindFirstChild("Head")
+		if targetHead then
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+			return
 		end
-		return nil
 	end
 
-	-- 2. Búsqueda normal por cercanía de FOV
-	if isValidTarget(currentTarget, nil) then return currentTarget end
+	-- 2. Si el Aimbot normal está encendido
+	if aimbotEnabled then
+		local closestPart = nil
+		local shortestDistance = fovEnabled and fovRadius or math.huge
+		local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
-	local closestPart = nil
-	local shortestDistance = fovEnabled and fovRadius or math.huge
-	local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer and player.Character and not aliasedPlayers[player.UserId] then
-			local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-			if humanoid and humanoid.Health > 0 then
-				local targetPart = player.Character:FindFirstChild("Head") 
-					or player.Character:FindFirstChild("UpperTorso") 
-
-				if targetPart then
-					local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-					if onScreen then
-						local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
-						if distance <= shortestDistance then
-							shortestDistance = distance
-							closestPart = targetPart
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player ~= LocalPlayer and player.Character and not aliasedPlayers[player.UserId] then
+				local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+				if humanoid and humanoid.Health > 0 then
+					local targetPart = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("UpperTorso")
+					if targetPart then
+						local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+						if onScreen then
+							local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
+							if distance <= shortestDistance then
+								shortestDistance = distance
+								closestPart = targetPart
+							end
 						end
 					end
 				end
 			end
 		end
-	end
-	return closestPart
-end
 
-RunService.RenderStepped:Connect(function()
-	updateESP()
-	
-	if aimbotEnabled then
-		currentTarget = getTarget()
-		if currentTarget then
-			Camera.CFrame = CFrame.new(Camera.CFrame.Position, currentTarget.Position)
+		if closestPart then
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, closestPart.Position)
 		end
-	else
-		currentTarget = nil
 	end
 end)
