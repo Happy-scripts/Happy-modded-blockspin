@@ -683,21 +683,38 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- CONTROL DE CÁMARA SUAVE Y AIMBOT
+-- CONTROL DE CÁMARA MEJORADO Y AIMBOT EFECTIVO
 ----------------------------------------------------
+local function isVisible(targetPart)
+	local origin = Camera.CFrame.Position
+	local direction = (targetPart.Position - origin)
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	
+	local ignoreList = {LocalPlayer.Character}
+	raycastParams.FilterDescendantsInstances = ignoreList
+
+	local result = Workspace:Raycast(origin, direction, raycastParams)
+	if result and result.Instance then
+		return result.Instance:IsDescendantOf(targetPart.Parent)
+	end
+	return false
+end
+
 RunService.RenderStepped:Connect(function()
 	updateESP()
 	
-	-- Fijado (Solo orienta la cámara hacia el enemigo sin pegarla a su cuerpo)
+	-- Modo Fijado Permanente
 	if fixedTarget and fixedTarget.Character then
-		local targetPart = fixedTarget.Character:FindFirstChild("Head") or fixedTarget.Character:FindFirstChild("HumanoidRootPart")
+		local targetPart = fixedTarget.Character:FindFirstChild("Head") 
+			or fixedTarget.Character:FindFirstChild("HumanoidRootPart")
 		if targetPart then
 			Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
 			return
 		end
 	end
 
-	-- Aimbot Normal por FOV
+	-- Aimbot Mejorado
 	if aimbotEnabled then
 		local closestPart = nil
 		local shortestDistance = fovEnabled and fovRadius or math.huge
@@ -707,12 +724,17 @@ RunService.RenderStepped:Connect(function()
 			if player ~= LocalPlayer and player.Character and not aliasedPlayers[player.UserId] then
 				local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
 				if humanoid and humanoid.Health > 0 then
-					local targetPart = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("UpperTorso")
+					
+					local targetPart = player.Character:FindFirstChild("Head") 
+						or player.Character:FindFirstChild("HumanoidRootPart") 
+						or player.Character:FindFirstChild("Torso")
+					
 					if targetPart then
 						local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
 						if onScreen then
 							local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
-							if distance <= shortestDistance then
+							
+							if distance <= shortestDistance and isVisible(targetPart) then
 								shortestDistance = distance
 								closestPart = targetPart
 							end
