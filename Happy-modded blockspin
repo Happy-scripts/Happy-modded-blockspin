@@ -2,7 +2,6 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -118,7 +117,7 @@ FOVStroke.Thickness = 2
 FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 FOVStroke.Parent = FOVCircle
 
--- 4. Barra Flotante Principal (Oculta hasta pasar la carga)
+-- 4. Barra Flotante Principal
 local MainBar = Instance.new("Frame")
 MainBar.Name = "MainBar"
 MainBar.Size = UDim2.new(0, 390, 0, 35)
@@ -166,7 +165,7 @@ OpenMenuBtn.TextSize = 13
 OpenMenuBtn.Font = Enum.Font.SourceSansBold
 OpenMenuBtn.Parent = MainBar
 
--- 5. Menú Desplegable Rediseñado
+-- 5. Menú Desplegable
 local MenuFrame = Instance.new("Frame")
 MenuFrame.Name = "MenuFrame"
 MenuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -265,11 +264,10 @@ local function createMenuButton(parent, name, text, posY)
 	return btn
 end
 
--- Botones Página Aimbot
 local AimbotBtn = createMenuButton(AimbotPage, "AimbotButton", "Aimbot 🎯: OFF", 0.02)
 local FOVBtn = createMenuButton(AimbotPage, "FOVButton", "FOV Circle 🟡: OFF", 0.12)
 
--- Slider FOV Más Grande (Fácil de mover)
+-- Slider FOV Accesible
 local FOVSliderFrame = Instance.new("Frame")
 FOVSliderFrame.Size = UDim2.new(0.9, 0, 0, 55)
 FOVSliderFrame.Position = UDim2.new(0.05, 0, 0.22, 0)
@@ -291,7 +289,7 @@ FOVLabel.Font = Enum.Font.SourceSansBold
 FOVLabel.Parent = FOVSliderFrame
 
 local SliderLine = Instance.new("Frame")
-SliderLine.Size = UDim2.new(0.85, 0, 0, 8) -- Línea más gruesa
+SliderLine.Size = UDim2.new(0.85, 0, 0, 8)
 SliderLine.Position = UDim2.new(0.075, 0, 0.65, 0)
 SliderLine.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 SliderLine.BorderSizePixel = 0
@@ -303,7 +301,7 @@ UICornerLine.Parent = SliderLine
 
 local SliderKnob = Instance.new("TextButton")
 SliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
-SliderKnob.Size = UDim2.new(0, 24, 0, 24) -- Bolita el doble de grande
+SliderKnob.Size = UDim2.new(0, 24, 0, 24)
 SliderKnob.Position = UDim2.new(0.33, 0, 0.5, 0)
 SliderKnob.BackgroundColor3 = Color3.fromRGB(255, 230, 0)
 SliderKnob.Text = ""
@@ -351,7 +349,7 @@ task.spawn(function()
 end)
 
 ----------------------------------------------------
--- CAMBIO DE PESTAÑAS Y CONTROLES
+-- CONTROL DE PESTAÑAS Y EVENTOS UI
 ----------------------------------------------------
 TabAimbotBtn.MouseButton1Click:Connect(function()
 	AimbotPage.Visible = true
@@ -415,7 +413,6 @@ FOVBtn.MouseButton1Click:Connect(function()
 	FOVBtn.TextColor3 = fovEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
--- SLIDER MEJORADO
 local draggingSlider = false
 local function updateSlider(input)
 	local sliderX = SliderLine.AbsolutePosition.X
@@ -686,21 +683,21 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- BLOQUEO TOTAL DE CÁMARA Y AIMBOT
+-- CONTROL DE CÁMARA SUAVE Y AIMBOT
 ----------------------------------------------------
 RunService.RenderStepped:Connect(function()
 	updateESP()
 	
-	-- 1. Si hay un jugador FIJADO, la cámara queda bloqueada a él SIEMPRE (incluso sin activar Aimbot general)
+	-- Fijado (Solo orienta la cámara hacia el enemigo sin pegarla a su cuerpo)
 	if fixedTarget and fixedTarget.Character then
-		local targetHead = fixedTarget.Character:FindFirstChild("Head")
-		if targetHead then
-			Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+		local targetPart = fixedTarget.Character:FindFirstChild("Head") or fixedTarget.Character:FindFirstChild("HumanoidRootPart")
+		if targetPart then
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
 			return
 		end
 	end
 
-	-- 2. Si el Aimbot normal está encendido
+	-- Aimbot Normal por FOV
 	if aimbotEnabled then
 		local closestPart = nil
 		local shortestDistance = fovEnabled and fovRadius or math.huge
