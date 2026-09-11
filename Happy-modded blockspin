@@ -18,7 +18,7 @@ local speedBoostEnabled = false
 
 local fovRadius = 100
 local normalSpeed = 16
-local boostSpeed = 32 -- Multiplicador a 2x exacto (16 * 2)
+local boostSpeed = 32 -- 2x exacto
 
 local dragging = false
 local dragInput, dragStart, startPos
@@ -33,26 +33,17 @@ local rarityColors = {
 	["common"]    = Color3.fromRGB(200, 200, 200) -- Gris / Blanco
 }
 
--- Función para identificar la rareza por nombre o propiedad del ítem
-local function getItemRarityColor(item)
-	if not item then return Color3.fromRGB(255, 255, 180) end
+local function getItemRarityColor(itemName)
+	if not itemName then return Color3.fromRGB(255, 255, 180) end
+	local name = string.lower(itemName)
 	
-	-- Si el objeto tiene una propiedad de rareza en StringValue
-	local rarityVal = item:FindFirstChild("Rarity") or item:FindFirstChild("RarityValue")
-	if rarityVal and rarityVal:IsA("StringValue") then
-		local r = string.lower(rarityVal.Value)
-		if rarityColors[r] then return rarityColors[r] end
-	end
-	
-	-- Detección por nombre
-	local name = string.lower(item.Name)
-	if name:find("legendary") or name:find("gold") or name:find("sniper") then
+	if name:find("legendary") or name:find("gold") or name:find("sniper") or name:find("rpg") then
 		return rarityColors["legendary"]
-	elseif name:find("epic") or name:find("rifle") or name:find("ak") or name:find("m4") then
+	elseif name:find("epic") or name:find("rifle") or name:find("ak") or name:find("m4") or name:find("bazooka") then
 		return rarityColors["epic"]
-	elseif name:find("shotgun") or name:find("escopeta") or name:find("rare") or name:find("ump") then
+	elseif name:find("shotgun") or name:find("escopeta") or name:find("rare") or name:find("ump") or name:find("revolver") then
 		return rarityColors["rare"]
-	elseif name:find("uncommon") or name:find("smg") or name:find("pistol") then
+	elseif name:find("uncommon") or name:find("smg") or name:find("pistol") or name:find("glock") then
 		return rarityColors["uncommon"]
 	end
 
@@ -105,7 +96,6 @@ UICornerBar.Parent = MainBar
 local DragBtn = Instance.new("TextButton")
 DragBtn.Name = "DragButton"
 DragBtn.Size = UDim2.new(0, 35, 1, 0)
-DragBtn.Position = UDim2.new(0, 0, 0, 0)
 DragBtn.BackgroundTransparency = 1
 DragBtn.Text = "+"
 DragBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -128,7 +118,7 @@ OpenMenuBtn.Name = "OpenMenuButton"
 OpenMenuBtn.Size = UDim2.new(1, -50, 1, 0)
 OpenMenuBtn.Position = UDim2.new(0, 50, 0, 0)
 OpenMenuBtn.BackgroundTransparency = 1
-OpenMenuBtn.Text = "Blockspin 🔫 - ⚡ Happy-modded ⚡"
+OpenMenuBtn.Text = "Blockspin 🔫 - ⚡ Fix-Mod ⚡"
 OpenMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenMenuBtn.TextSize = 15
 OpenMenuBtn.Font = Enum.Font.SourceSansBold
@@ -153,7 +143,7 @@ UICornerMenu.Parent = MenuFrame
 local MenuTitle = Instance.new("TextLabel")
 MenuTitle.Size = UDim2.new(1, 0, 0, 35)
 MenuTitle.BackgroundTransparency = 1
-MenuTitle.Text = "Menú Principal"
+MenuTitle.Text = "Menú Principal (Fix)"
 MenuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 MenuTitle.TextSize = 20
 MenuTitle.Font = Enum.Font.SourceSansBold
@@ -229,7 +219,7 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
--- Botones de visuales y utilidades
+-- Botones extras
 local ViewPlayersBtn = createMenuButton("ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.35)
 local ViewNamesBtn = createMenuButton("ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.43)
 local ViewHealthBtn = createMenuButton("ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.51)
@@ -314,12 +304,22 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
--- FUNCIONALIDADES DE MOVIMIENTO (SALTO E INFINITE SPEED)
+-- FUNCIONALIDADES DE MOVIMIENTO (SALTO CORREGIDO)
 ----------------------------------------------------
 InfJumpBtn.MouseButton1Click:Connect(function()
 	infJumpEnabled = not infJumpEnabled
 	InfJumpBtn.Text = "INF JUMP 🦘: " .. (infJumpEnabled and "ON" or "OFF")
 	InfJumpBtn.TextColor3 = infJumpEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+end)
+
+-- Sistema de Salto Infinito optimizado mediante JumpRequest (mantiene presionado)
+UserInputService.JumpRequest:Connect(function()
+	if infJumpEnabled and LocalPlayer.Character then
+		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		end
+	end
 end)
 
 SpeedBoostBtn.MouseButton1Click:Connect(function()
@@ -334,7 +334,7 @@ SpeedBoostBtn.MouseButton1Click:Connect(function()
 end)
 
 ----------------------------------------------------
--- BILLBOARD GUI (ESP Y MOSTRAR ITEMS POR RAREZA)
+-- BILLBOARD GUI Y ESP DE ITEMS CORREGIDO
 ----------------------------------------------------
 local function getPlayerESP(player)
 	if not player.Character then return nil end
@@ -346,8 +346,8 @@ local function getPlayerESP(player)
 		bGui = Instance.new("BillboardGui")
 		bGui.Name = "ESP_Billboard"
 		bGui.Adornee = head
-		bGui.Size = UDim2.new(0, 200, 0, 120)
-		bGui.StudsOffset = Vector3.new(0, 3, 0)
+		bGui.Size = UDim2.new(0, 220, 0, 140)
+		bGui.StudsOffset = Vector3.new(0, 3.2, 0)
 		bGui.AlwaysOnTop = true
 		bGui.Parent = head
 
@@ -367,7 +367,7 @@ local function getPlayerESP(player)
 		local healthBg = Instance.new("Frame")
 		healthBg.Name = "HealthBg"
 		healthBg.Size = UDim2.new(0.7, 0, 0, 7)
-		healthBg.Position = UDim2.new(0.15, 0, 0.2, 0)
+		healthBg.Position = UDim2.new(0.15, 0, 0.16, 0)
 		healthBg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 		healthBg.BorderSizePixel = 1
 		healthBg.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -383,8 +383,8 @@ local function getPlayerESP(player)
 
 		local itemsFrame = Instance.new("Frame")
 		itemsFrame.Name = "ItemsFrame"
-		itemsFrame.Size = UDim2.new(1, 0, 0, 35)
-		itemsFrame.Position = UDim2.new(0, 0, 0.32, 0)
+		itemsFrame.Size = UDim2.new(1, 0, 0, 50)
+		itemsFrame.Position = UDim2.new(0, 0, 0.28, 0)
 		itemsFrame.BackgroundTransparency = 1
 		itemsFrame.Visible = false
 		itemsFrame.Parent = bGui
@@ -479,25 +479,42 @@ local function updateESP()
 							if not child:IsA("UIListLayout") then child:Destroy() end
 						end
 
-						local function displayTool(item)
-							if not item:IsA("Tool") then return end
-							local rarityColor = getItemRarityColor(item)
+						local foundItems = {}
 
-							local txt = Instance.new("TextLabel")
-							txt.Size = UDim2.new(1, 0, 0, 14)
-							txt.BackgroundTransparency = 1
-							txt.Text = "[" .. item.Name .. "]"
-							txt.TextColor3 = rarityColor
-							txt.TextStrokeTransparency = 0
-							txt.TextSize = 12
-							txt.Font = Enum.Font.SourceSansBold
-							txt.Parent = itemsFrame
+						local function addFoundItem(itemObj)
+							if itemObj and (itemObj:IsA("Tool") or itemObj:IsA("Model") or itemObj:IsA("Part")) then
+								if not foundItems[itemObj.Name] then
+									foundItems[itemObj.Name] = true
+									local rarityColor = getItemRarityColor(itemObj.Name)
+
+									local txt = Instance.new("TextLabel")
+									txt.Size = UDim2.new(1, 0, 0, 14)
+									txt.BackgroundTransparency = 1
+									txt.Text = "• " .. itemObj.Name
+									txt.TextColor3 = rarityColor
+									txt.TextStrokeTransparency = 0
+									txt.TextSize = 12
+									txt.Font = Enum.Font.SourceSansBold
+									txt.Parent = itemsFrame
+								end
+							end
 						end
 
-						if player:FindFirstChild("Backpack") then
-							for _, tool in ipairs(player.Backpack:GetChildren()) do displayTool(tool) end
+						-- Buscar en Backpack estándar
+						local backpack = player:FindFirstChild("Backpack")
+						if backpack then
+							for _, tool in ipairs(backpack:GetChildren()) do addFoundItem(tool) end
 						end
-						for _, tool in ipairs(player.Character:GetChildren()) do displayTool(tool) end
+						
+						-- Buscar herramientas equipadas en el Character
+						for _, tool in ipairs(player.Character:GetChildren()) do addFoundItem(tool) end
+
+						-- Buscar carpetas de inventario alternativas comunes en juegos tipo GTA/Blockspin
+						for _, child in ipairs(player:GetChildren()) do
+							if child:IsA("Folder") or child:IsA("Model") then
+								for _, subItem in ipairs(child:GetChildren()) do addFoundItem(subItem) end
+							end
+						end
 					end
 				end
 			end
@@ -556,19 +573,8 @@ local function getClosestTarget()
 	return closestPart
 end
 
--- Bucle de renderizado constante
 RunService.RenderStepped:Connect(function()
 	updateESP()
-
-	-- Manejo continuo de Inf Jump (Salto Infinito constante manteniendo presionado)
-	if infJumpEnabled and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-		if LocalPlayer.Character then
-			local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-			end
-		end
-	end
 
 	-- Manejo de Velocidad 2x (WalkSpeed = 32)
 	if speedBoostEnabled and LocalPlayer.Character then
