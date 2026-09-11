@@ -46,17 +46,7 @@ FOVStroke.Thickness = 2
 FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 FOVStroke.Parent = FOVCircle
 
--- 2.1 Línea Roja de Trazado (Silent Aim Snapline)
-local SnapLine = Instance.new("Frame")
-SnapLine.Name = "SnapLine"
-SnapLine.AnchorPoint = Vector2.new(0, 0.5)
-SnapLine.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-SnapLine.BorderSizePixel = 0
-SnapLine.Visible = false
-SnapLine.Size = UDim2.new(0, 0, 0, 2)
-SnapLine.Parent = ScreenGui
-
--- 3. Barra Flotante Principal
+-- 3. Barra Flotante Principal con "Blockspin 🔫 / ⚡ Happy-modded ⚡"
 local MainBar = Instance.new("Frame")
 MainBar.Name = "MainBar"
 MainBar.Size = UDim2.new(0, 390, 0, 35)
@@ -71,6 +61,7 @@ local UICornerBar = Instance.new("UICorner")
 UICornerBar.CornerRadius = UDim.new(0, 8)
 UICornerBar.Parent = MainBar
 
+-- Botón de Arraste (+)
 local DragBtn = Instance.new("TextButton")
 DragBtn.Name = "DragButton"
 DragBtn.Size = UDim2.new(0, 35, 1, 0)
@@ -92,6 +83,7 @@ Separator.TextSize = 18
 Separator.Font = Enum.Font.SourceSans
 Separator.Parent = MainBar
 
+-- Botón para abrir el menú con el nombre exacto Blockspin y Happy-modded
 local OpenMenuBtn = Instance.new("TextButton")
 OpenMenuBtn.Name = "OpenMenuButton"
 OpenMenuBtn.Size = UDim2.new(1, -50, 1, 0)
@@ -147,9 +139,11 @@ local function createMenuButton(name, text, posY)
 	return btn
 end
 
-local AimbotBtn = createMenuButton("AimbotButton", "Silent Aim 🎯: OFF", 0.12)
+-- Funciones del menú
+local AimbotBtn = createMenuButton("AimbotButton", "Aimbot 🎯: OFF", 0.12)
 local FOVBtn = createMenuButton("FOVButton", "FOV Circle 🟡: OFF", 0.23)
 
+-- Slider FOV
 local FOVSliderFrame = Instance.new("Frame")
 FOVSliderFrame.Name = "FOVSliderFrame"
 FOVSliderFrame.Size = UDim2.new(0.85, 0, 0, 50)
@@ -192,6 +186,7 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
+-- Botones de visuales
 local ViewPlayersBtn = createMenuButton("ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.52)
 local ViewNamesBtn = createMenuButton("ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.64)
 local ViewHealthBtn = createMenuButton("ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.76)
@@ -230,9 +225,8 @@ end)
 
 AimbotBtn.MouseButton1Click:Connect(function()
 	aimbotEnabled = not aimbotEnabled
-	AimbotBtn.Text = "Silent Aim 🎯: " .. (aimbotEnabled and "ON" or "OFF")
+	AimbotBtn.Text = "Aimbot 🎯: " .. (aimbotEnabled and "ON" or "OFF")
 	AimbotBtn.TextColor3 = aimbotEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-	SnapLine.Visible = aimbotEnabled
 	if not aimbotEnabled then currentTarget = nil end
 end)
 
@@ -396,7 +390,7 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- SILENT AIM Y BUCLE RUNSERVICE (LÍNEA ROJA Y SELECCIÓN)
+-- AIMBOT INSTANTÁNEO Y BUCLE RUNSERVICE
 ----------------------------------------------------
 local function isValidTarget(part)
 	if not part or not part.Parent then return false end
@@ -406,9 +400,11 @@ local function isValidTarget(part)
 	local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 	if not onScreen then return false end
 	
-	local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-	local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
-	if distance > fovRadius then return false end
+	if fovEnabled then
+		local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+		local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
+		if distance > fovRadius then return false end
+	end
 
 	return true
 end
@@ -417,7 +413,7 @@ local function getClosestTarget()
 	if isValidTarget(currentTarget) then return currentTarget end
 
 	local closestPart = nil
-	local shortestDistance = fovRadius
+	local shortestDistance = fovEnabled and fovRadius or math.huge
 	local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -450,27 +446,10 @@ RunService.RenderStepped:Connect(function()
 	if aimbotEnabled then
 		currentTarget = getClosestTarget()
 		if currentTarget then
-			local screenPos, onScreen = Camera:WorldToViewportPoint(currentTarget.Position)
-			if onScreen then
-				local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-				local targetPos2D = Vector2.new(screenPos.X, screenPos.Y)
-				
-				-- Actualizar la Línea Roja de Trazado desde el centro (pantalla) hasta el jugador
-				local distance = (targetPos2D - viewportCenter).Magnitude
-				local angle = math.deg(math.atan2(targetPos2D.Y - viewportCenter.Y, targetPos2D.X - viewportCenter.X))
-				
-				SnapLine.Position = UDim2.new(0, viewportCenter.X, 0, viewportCenter.Y)
-				SnapLine.Size = UDim2.new(0, distance, 0, 2)
-				SnapLine.Rotation = angle
-				SnapLine.Visible = true
-			else
-				SnapLine.Visible = false
-			end
-		else
-			SnapLine.Visible = false
+			-- BLOQUEO INSTANTÁNEO ABSOLUTO (Sin Lerp)
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, currentTarget.Position)
 		end
 	else
-		SnapLine.Visible = false
 		currentTarget = nil
 	end
 end)
