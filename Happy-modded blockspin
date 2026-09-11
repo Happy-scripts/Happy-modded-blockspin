@@ -1,0 +1,577 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+-- Variables de Estado
+local aimbotEnabled = false
+local fovEnabled = false
+local viewPlayersEnabled = false
+local viewNamesEnabled = false
+local viewHealthEnabled = false
+local viewItemsEnabled = false
+local infJumpEnabled = false
+local speedBoostEnabled = false
+
+local fovRadius = 100
+local normalSpeed = 16
+local boostSpeed = 22.4 -- Factor de ~1.4x para evitar el anti-cheat
+
+local dragging = false
+local dragInput, dragStart, startPos
+local currentTarget = nil
+
+-- 1. Crear Gui Principal
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "BlockspinGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- 2. Círculo FOV
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Name = "FOVCircle"
+FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+FOVCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.BorderSizePixel = 0
+FOVCircle.Visible = false
+FOVCircle.Parent = ScreenGui
+
+local UICornerFOV = Instance.new("UICorner")
+UICornerFOV.CornerRadius = UDim.new(1, 0)
+UICornerFOV.Parent = FOVCircle
+
+local FOVStroke = Instance.new("UIStroke")
+FOVStroke.Name = "FOVStroke"
+FOVStroke.Color = Color3.fromRGB(255, 235, 0)
+FOVStroke.Thickness = 2
+FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+FOVStroke.Parent = FOVCircle
+
+-- 3. Barra Principal
+local MainBar = Instance.new("Frame")
+MainBar.Name = "MainBar"
+MainBar.Size = UDim2.new(0, 360, 0, 35)
+MainBar.Position = UDim2.new(0.5, -180, 0.1, 0)
+MainBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainBar.BackgroundTransparency = 0.15
+MainBar.BorderSizePixel = 0
+MainBar.Active = true
+MainBar.Parent = ScreenGui
+
+local UICornerBar = Instance.new("UICorner")
+UICornerBar.CornerRadius = UDim.new(0, 8)
+UICornerBar.Parent = MainBar
+
+local DragBtn = Instance.new("TextButton")
+DragBtn.Name = "DragButton"
+DragBtn.Size = UDim2.new(0, 35, 1, 0)
+DragBtn.Position = UDim2.new(0, 0, 0, 0)
+DragBtn.BackgroundTransparency = 1
+DragBtn.Text = "+"
+DragBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DragBtn.TextSize = 22
+DragBtn.Font = Enum.Font.SourceSansBold
+DragBtn.Parent = MainBar
+
+local Separator = Instance.new("TextLabel")
+Separator.Size = UDim2.new(0, 15, 1, 0)
+Separator.Position = UDim2.new(0, 35, 0, 0)
+Separator.BackgroundTransparency = 1
+Separator.Text = "|"
+Separator.TextColor3 = Color3.fromRGB(150, 150, 150)
+Separator.TextSize = 18
+Separator.Font = Enum.Font.SourceSans
+Separator.Parent = MainBar
+
+local OpenMenuBtn = Instance.new("TextButton")
+OpenMenuBtn.Name = "OpenMenuButton"
+OpenMenuBtn.Size = UDim2.new(1, -50, 1, 0)
+OpenMenuBtn.Position = UDim2.new(0, 50, 0, 0)
+OpenMenuBtn.BackgroundTransparency = 1
+OpenMenuBtn.Text = "Blockspin 🔫 - ⚡ Happy-modded ⚡"
+OpenMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenMenuBtn.TextSize = 15
+OpenMenuBtn.Font = Enum.Font.SourceSansBold
+OpenMenuBtn.Parent = MainBar
+
+-- 4. Menú Principal
+local MenuFrame = Instance.new("Frame")
+MenuFrame.Name = "MenuFrame"
+MenuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MenuFrame.Size = UDim2.new(0, 320, 0, 580)
+MenuFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MenuFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MenuFrame.BackgroundTransparency = 0.15
+MenuFrame.BorderSizePixel = 0
+MenuFrame.Visible = false
+MenuFrame.Parent = ScreenGui
+
+local UICornerMenu = Instance.new("UICorner")
+UICornerMenu.CornerRadius = UDim.new(0, 10)
+UICornerMenu.Parent = MenuFrame
+
+local MenuTitle = Instance.new("TextLabel")
+MenuTitle.Size = UDim2.new(1, 0, 0, 35)
+MenuTitle.BackgroundTransparency = 1
+MenuTitle.Text = "Menú Principal"
+MenuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+MenuTitle.TextSize = 20
+MenuTitle.Font = Enum.Font.SourceSansBold
+MenuTitle.Parent = MenuFrame
+
+local function createMenuButton(name, text, posY)
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.Size = UDim2.new(0.85, 0, 0, 36)
+	btn.Position = UDim2.new(0.075, 0, posY, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+	btn.TextSize = 14
+	btn.Font = Enum.Font.SourceSansBold
+	btn.Parent = MenuFrame
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = btn
+
+	return btn
+end
+
+-- Botones
+local AimbotBtn = createMenuButton("AimbotButton", "Aimbot 🎯: OFF", 0.07)
+local FOVBtn = createMenuButton("FOVButton", "FOV Circle 🟡: OFF", 0.15)
+
+-- Slider FOV
+local FOVSliderFrame = Instance.new("Frame")
+FOVSliderFrame.Name = "FOVSliderFrame"
+FOVSliderFrame.Size = UDim2.new(0.85, 0, 0, 55)
+FOVSliderFrame.Position = UDim2.new(0.075, 0, 0.23, 0)
+FOVSliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+FOVSliderFrame.BackgroundTransparency = 0.5
+FOVSliderFrame.Parent = MenuFrame
+
+local UICornerSliderFrame = Instance.new("UICorner")
+UICornerSliderFrame.CornerRadius = UDim.new(0, 8)
+UICornerSliderFrame.Parent = FOVSliderFrame
+
+local FOVLabel = Instance.new("TextLabel")
+FOVLabel.Size = UDim2.new(1, 0, 0, 22)
+FOVLabel.BackgroundTransparency = 1
+FOVLabel.Text = "Tamaño FOV: 100"
+FOVLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+FOVLabel.TextSize = 13
+FOVLabel.Font = Enum.Font.SourceSansBold
+FOVLabel.Parent = FOVSliderFrame
+
+local SliderLine = Instance.new("Frame")
+SliderLine.Name = "SliderLine"
+SliderLine.Size = UDim2.new(0.8, 0, 0, 6)
+SliderLine.Position = UDim2.new(0.1, 0, 0.6, 0)
+SliderLine.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+SliderLine.BorderSizePixel = 0
+SliderLine.Parent = FOVSliderFrame
+
+local UICornerLine = Instance.new("UICorner")
+UICornerLine.CornerRadius = UDim.new(1, 0)
+UICornerLine.Parent = SliderLine
+
+local SliderKnob = Instance.new("TextButton")
+SliderKnob.Name = "SliderKnob"
+SliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
+SliderKnob.Size = UDim2.new(0, 16, 0, 16)
+SliderKnob.Position = UDim2.new(0.33, 0, 0.5, 0)
+SliderKnob.BackgroundColor3 = Color3.fromRGB(255, 230, 0)
+SliderKnob.Text = ""
+SliderKnob.Parent = SliderLine
+
+local UICornerKnob = Instance.new("UICorner")
+UICornerKnob.CornerRadius = UDim.new(1, 0)
+UICornerKnob.Parent = SliderKnob
+
+-- Botones de visuales y utilidades
+local ViewPlayersBtn = createMenuButton("ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.35)
+local ViewNamesBtn = createMenuButton("ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.43)
+local ViewHealthBtn = createMenuButton("ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.51)
+local ViewItemsBtn = createMenuButton("ViewItemsButton", "VIEW ITEMS 🎒: OFF", 0.59)
+local InfJumpBtn = createMenuButton("InfJumpButton", "INF JUMP 🦘: OFF", 0.67)
+local SpeedBoostBtn = createMenuButton("SpeedBoostButton", "SPEED BOOST ⚡ (1.4x): OFF", 0.75)
+----------------------------------------------------
+-- DRAG Y MENÚS
+----------------------------------------------------
+local function updateDrag(input)
+	local delta = input.Position - dragStart
+	MainBar.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+DragBtn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = MainBar.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+
+DragBtn.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then updateDrag(input) end
+end)
+
+OpenMenuBtn.MouseButton1Click:Connect(function()
+	MenuFrame.Visible = not MenuFrame.Visible
+end)
+
+AimbotBtn.MouseButton1Click:Connect(function()
+	aimbotEnabled = not aimbotEnabled
+	AimbotBtn.Text = "Aimbot 🎯: " .. (aimbotEnabled and "ON" or "OFF")
+	AimbotBtn.TextColor3 = aimbotEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+	if not aimbotEnabled then currentTarget = nil end
+end)
+
+FOVBtn.MouseButton1Click:Connect(function()
+	fovEnabled = not fovEnabled
+	FOVCircle.Visible = fovEnabled
+	FOVBtn.Text = "FOV Circle 🟡: " .. (fovEnabled and "ON" or "OFF")
+	FOVBtn.TextColor3 = fovEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+end)
+
+local draggingSlider = false
+local function updateSlider(input)
+	local sliderX = SliderLine.AbsolutePosition.X
+	local sliderWidth = SliderLine.AbsoluteSize.X
+	local inputX = input.Position.X
+	local percentage = math.clamp((inputX - sliderX) / sliderWidth, 0, 1)
+	SliderKnob.Position = UDim2.new(percentage, 0, 0.5, 0)
+	fovRadius = math.floor(30 + (percentage * 270))
+	FOVLabel.Text = "Tamaño FOV: " .. tostring(fovRadius)
+	FOVCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+end
+
+SliderKnob.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		draggingSlider = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		draggingSlider = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		updateSlider(input)
+	end
+end)
+
+----------------------------------------------------
+-- FUNCIONALIDADES DE MOVIMIENTO (SALTO E INFINITE SPEED)
+----------------------------------------------------
+InfJumpBtn.MouseButton1Click:Connect(function()
+	infJumpEnabled = not infJumpEnabled
+	InfJumpBtn.Text = "INF JUMP 🦘: " .. (infJumpEnabled and "ON" or "OFF")
+	InfJumpBtn.TextColor3 = infJumpEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+end)
+
+UserInputService.JumpRequest:Connect(function()
+	if infJumpEnabled and LocalPlayer.Character then
+		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		end
+	end
+end)
+
+SpeedBoostBtn.MouseButton1Click:Connect(function()
+	speedBoostEnabled = not speedBoostEnabled
+	SpeedBoostBtn.Text = "SPEED BOOST ⚡ (1.4x): " .. (speedBoostEnabled and "ON" or "OFF")
+	SpeedBoostBtn.TextColor3 = speedBoostEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+	
+	if not speedBoostEnabled and LocalPlayer.Character then
+		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid then humanoid.WalkSpeed = normalSpeed end
+	end
+end)
+
+----------------------------------------------------
+-- BILLBOARD GUI (ESP Y MOSTRAR ITEMS)
+----------------------------------------------------
+local function getPlayerESP(player)
+	if not player.Character then return nil end
+	local head = player.Character:FindFirstChild("Head")
+	if not head then return nil end
+
+	local bGui = head:FindFirstChild("ESP_Billboard")
+	if not bGui then
+		bGui = Instance.new("BillboardGui")
+		bGui.Name = "ESP_Billboard"
+		bGui.Adornee = head
+		bGui.Size = UDim2.new(0, 200, 0, 120)
+		bGui.StudsOffset = Vector3.new(0, 3, 0)
+		bGui.AlwaysOnTop = true
+		bGui.Parent = head
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Name = "NameLabel"
+		nameLabel.Size = UDim2.new(1, 0, 0, 18)
+		nameLabel.Position = UDim2.new(0, 0, 0, 0)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = player.Name
+		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		nameLabel.TextStrokeTransparency = 0
+		nameLabel.TextSize = 13
+		nameLabel.Font = Enum.Font.SourceSansBold
+		nameLabel.Visible = false
+		nameLabel.Parent = bGui
+
+		local healthBg = Instance.new("Frame")
+		healthBg.Name = "HealthBg"
+		healthBg.Size = UDim2.new(0.7, 0, 0, 7)
+		healthBg.Position = UDim2.new(0.15, 0, 0.2, 0)
+		healthBg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+		healthBg.BorderSizePixel = 1
+		healthBg.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		healthBg.Visible = false
+		healthBg.Parent = bGui
+
+		local healthFill = Instance.new("Frame")
+		healthFill.Name = "HealthFill"
+		healthFill.Size = UDim2.new(1, 0, 1, 0)
+		healthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+		healthFill.BorderSizePixel = 0
+		healthFill.Parent = healthBg
+
+		local itemsFrame = Instance.new("Frame")
+		itemsFrame.Name = "ItemsFrame"
+		itemsFrame.Size = UDim2.new(1, 0, 0, 35)
+		itemsFrame.Position = UDim2.new(0, 0, 0.32, 0)
+		itemsFrame.BackgroundTransparency = 1
+		itemsFrame.Visible = false
+		itemsFrame.Parent = bGui
+
+		local UIListLayout = Instance.new("UIListLayout")
+		UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		UIListLayout.Padding = UDim.new(0, 4)
+		UIListLayout.Parent = itemsFrame
+	end
+	return bGui
+end
+
+local function applyHighlight(character)
+	if not character then return end
+	if not character:FindFirstChild("PlayerHighlight") then
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "PlayerHighlight"
+		highlight.FillColor = Color3.fromRGB(255, 0, 0)
+		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+		highlight.FillTransparency = 0.4
+		highlight.OutlineTransparency = 0
+		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		highlight.Parent = character
+	end
+end
+
+local function removeHighlight(character)
+	if character and character:FindFirstChild("PlayerHighlight") then
+		character.PlayerHighlight:Destroy()
+	end
+end
+
+ViewPlayersBtn.MouseButton1Click:Connect(function()
+	viewPlayersEnabled = not viewPlayersEnabled
+	ViewPlayersBtn.Text = "VIEW PLAYERS 🔴: " .. (viewPlayersEnabled and "ON" or "OFF")
+	ViewPlayersBtn.TextColor3 = viewPlayersEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+	
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			if viewPlayersEnabled then applyHighlight(player.Character) else removeHighlight(player.Character) end
+		end
+	end
+end)
+
+ViewNamesBtn.MouseButton1Click:Connect(function()
+	viewNamesEnabled = not viewNamesEnabled
+	ViewNamesBtn.Text = "VIEW NAMES 🏷️: " .. (viewNamesEnabled and "ON" or "OFF")
+	ViewNamesBtn.TextColor3 = viewNamesEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+end)
+
+ViewHealthBtn.MouseButton1Click:Connect(function()
+	viewHealthEnabled = not viewHealthEnabled
+	ViewHealthBtn.Text = "VIEW HEALTH ❤️: " .. (viewHealthEnabled and "ON" or "OFF")
+	ViewHealthBtn.TextColor3 = viewHealthEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+end)
+
+ViewItemsBtn.MouseButton1Click:Connect(function()
+	viewItemsEnabled = not viewItemsEnabled
+	ViewItemsBtn.Text = "VIEW ITEMS 🎒: " .. (viewItemsEnabled and "ON" or "OFF")
+	ViewItemsBtn.TextColor3 = viewItemsEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+end)
+
+local function getItemAssetId(item)
+	if not item then return nil end
+	if item:IsA("Tool") and item.TextureId ~= "" and item.TextureId ~= "rbxassetid://0" then
+		return item.TextureId
+	end
+	for _, child in ipairs(item:GetChildren()) do
+		if child:IsA("StringValue") and (child.Name == "Texture" or child.Name == "Icon" or child.Name == "Image") then
+			if child.Value ~= "" then return child.Value end
+		elseif child:IsA("Texture") or child:IsA("Decal") then
+			if child.Texture ~= "" then return child.Texture end
+		end
+	end
+	return nil
+end
+
+local function updateESP()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			local bGui = getPlayerESP(player)
+			if bGui then
+				local nameLabel = bGui:FindFirstChild("NameLabel")
+				if nameLabel then nameLabel.Visible = viewNamesEnabled end
+
+				local healthBg = bGui:FindFirstChild("HealthBg")
+				if healthBg then
+					healthBg.Visible = viewHealthEnabled
+					local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+					if humanoid then
+						local healthRatio = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+						local healthFill = healthBg:FindFirstChild("HealthFill")
+						if healthFill then
+							healthFill.Size = UDim2.new(healthRatio, 0, 1, 0)
+							healthFill.BackgroundColor3 = Color3.fromRGB(255 * (1 - healthRatio), 255 * healthRatio, 0)
+						end
+					end
+				end
+
+				local itemsFrame = bGui:FindFirstChild("ItemsFrame")
+				if itemsFrame then
+					itemsFrame.Visible = viewItemsEnabled
+					if viewItemsEnabled then
+						for _, child in ipairs(itemsFrame:GetChildren()) do
+							if not child:IsA("UIListLayout") then child:Destroy() end
+						end
+
+						local function displayTool(item)
+							if not item:IsA("Tool") then return end
+							local assetId = getItemAssetId(item)
+
+							if assetId then
+								local img = Instance.new("ImageLabel")
+								img.Size = UDim2.new(0, 24, 0, 24)
+								img.BackgroundTransparency = 1
+								img.Image = assetId
+								img.Parent = itemsFrame
+							else
+								local txt = Instance.new("TextLabel")
+								txt.Size = UDim2.new(0, 0, 0, 18)
+								txt.AutomaticSize = Enum.AutomaticSize.X
+								txt.BackgroundTransparency = 1
+								txt.Text = "[" .. item.Name .. "]"
+								txt.TextColor3 = Color3.fromRGB(255, 255, 180)
+								txt.TextStrokeTransparency = 0
+								txt.TextSize = 11
+								txt.Font = Enum.Font.SourceSansBold
+								txt.Parent = itemsFrame
+							end
+						end
+
+						if player:FindFirstChild("Backpack") then
+							for _, tool in ipairs(player.Backpack:GetChildren()) do displayTool(tool) end
+						end
+						for _, tool in ipairs(player.Character:GetChildren()) do displayTool(tool) end
+					end
+				end
+			end
+		end
+	end
+end
+
+----------------------------------------------------
+-- AIMBOT MEJORADO Y ESTABLE
+----------------------------------------------------
+local function isValidTarget(part)
+	if not part or not part.Parent then return false end
+	local humanoid = part.Parent:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then return false end
+
+	local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+	if not onScreen then return false end
+	
+	if fovEnabled then
+		local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+		local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
+		if distance > fovRadius then return false end
+	end
+
+	return true
+end
+
+local function getClosestTarget()
+	if isValidTarget(currentTarget) then return currentTarget end
+
+	local closestPart = nil
+	local shortestDistance = fovEnabled and fovRadius or math.huge
+	local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid and humanoid.Health > 0 then
+				local targetPart = player.Character:FindFirstChild("Head") 
+					or player.Character:FindFirstChild("UpperTorso") 
+					or player.Character:FindFirstChild("Torso")
+
+				if targetPart then
+					local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+					if onScreen then
+						local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
+						if distance <= shortestDistance then
+							shortestDistance = distance
+							closestPart = targetPart
+						end
+					end
+				end
+			end
+		end
+	end
+	return closestPart
+end
+
+-- Bucle Principal
+RunService.RenderStepped:Connect(function()
+	updateESP()
+
+	if speedBoostEnabled and LocalPlayer.Character then
+		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.WalkSpeed ~= boostSpeed then
+			humanoid.WalkSpeed = boostSpeed
+		end
+	end
+	
+	if aimbotEnabled then
+		currentTarget = getClosestTarget()
+		if currentTarget then
+			local targetCFrame = CFrame.new(Camera.CFrame.Position, currentTarget.Position)
+			Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.45)
+		end
+	else
+		currentTarget = nil
+	end
+end)
