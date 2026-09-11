@@ -12,47 +12,15 @@ local fovEnabled = false
 local viewPlayersEnabled = false
 local viewNamesEnabled = false
 local viewHealthEnabled = false
-local viewItemsEnabled = false
-local infJumpEnabled = false
-local speedBoostEnabled = false
 
 local fovRadius = 100
-local normalSpeed = 16
-local boostSpeed = 32 -- Multiplicador exacto a 2x
-
 local dragging = false
 local dragInput, dragStart, startPos
 local currentTarget = nil
 
--- Colores de Rarity para Blockspin / GTA-like items
-local rarityColors = {
-	["legendary"] = Color3.fromRGB(255, 165, 0), -- Naranja
-	["epic"]      = Color3.fromRGB(163, 53, 238), -- Morado
-	["rare"]      = Color3.fromRGB(0, 112, 221),  -- Azul (ej. Escopeta)
-	["uncommon"]  = Color3.fromRGB(30, 255, 0),   -- Verde
-	["common"]    = Color3.fromRGB(200, 200, 200) -- Gris / Blanco
-}
-
-local function getItemRarityColor(itemName)
-	if not itemName then return Color3.fromRGB(255, 255, 180) end
-	local name = string.lower(itemName)
-	
-	if name:find("legendary") or name:find("gold") or name:find("sniper") or name:find("rpg") then
-		return rarityColors["legendary"]
-	elseif name:find("epic") or name:find("rifle") or name:find("ak") or name:find("m4") or name:find("bazooka") then
-		return rarityColors["epic"]
-	elseif name:find("shotgun") or name:find("escopeta") or name:find("rare") or name:find("ump") or name:find("revolver") then
-		return rarityColors["rare"]
-	elseif name:find("uncommon") or name:find("smg") or name:find("pistol") or name:find("glock") then
-		return rarityColors["uncommon"]
-	end
-
-	return rarityColors["common"]
-end
-
 -- 1. Crear Gui Principal
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BlockspinGuiUltimate"
+ScreenGui.Name = "BlockspinGuiSimple"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -119,17 +87,17 @@ OpenMenuBtn.Name = "OpenMenuButton"
 OpenMenuBtn.Size = UDim2.new(1, -50, 1, 0)
 OpenMenuBtn.Position = UDim2.new(0, 50, 0, 0)
 OpenMenuBtn.BackgroundTransparency = 1
-OpenMenuBtn.Text = "Blockspin 🔫 - ⚡ Ultimate Fix ⚡"
+OpenMenuBtn.Text = "Blockspin 🔫 - 🎯 Menú Limpio"
 OpenMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenMenuBtn.TextSize = 15
 OpenMenuBtn.Font = Enum.Font.SourceSansBold
 OpenMenuBtn.Parent = MainBar
 
--- 4. Menú Principal
+-- 4. Menú Principal (Más corto)
 local MenuFrame = Instance.new("Frame")
 MenuFrame.Name = "MenuFrame"
 MenuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MenuFrame.Size = UDim2.new(0, 320, 0, 580)
+MenuFrame.Size = UDim2.new(0, 320, 0, 380)
 MenuFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MenuFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MenuFrame.BackgroundTransparency = 0.15
@@ -144,7 +112,7 @@ UICornerMenu.Parent = MenuFrame
 local MenuTitle = Instance.new("TextLabel")
 MenuTitle.Size = UDim2.new(1, 0, 0, 35)
 MenuTitle.BackgroundTransparency = 1
-MenuTitle.Text = "Menú Principal (Ultimate)"
+MenuTitle.Text = "Menú (Aimbot & Visuales)"
 MenuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 MenuTitle.TextSize = 20
 MenuTitle.Font = Enum.Font.SourceSansBold
@@ -169,15 +137,15 @@ local function createMenuButton(name, text, posY)
 	return btn
 end
 
--- Botones
-local AimbotBtn = createMenuButton("AimbotButton", "Aimbot 🎯: OFF", 0.07)
-local FOVBtn = createMenuButton("FOVButton", "FOV Circle 🟡: OFF", 0.15)
+-- Botones Activos
+local AimbotBtn = createMenuButton("AimbotButton", "Aimbot 🎯: OFF", 0.12)
+local FOVBtn = createMenuButton("FOVButton", "FOV Circle 🟡: OFF", 0.23)
 
 -- Slider FOV
 local FOVSliderFrame = Instance.new("Frame")
 FOVSliderFrame.Name = "FOVSliderFrame"
 FOVSliderFrame.Size = UDim2.new(0.85, 0, 0, 55)
-FOVSliderFrame.Position = UDim2.new(0.075, 0, 0.23, 0)
+FOVSliderFrame.Position = UDim2.new(0.075, 0, 0.35, 0)
 FOVSliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 FOVSliderFrame.BackgroundTransparency = 0.5
 FOVSliderFrame.Parent = MenuFrame
@@ -220,13 +188,11 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
--- Botones extras
-local ViewPlayersBtn = createMenuButton("ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.35)
-local ViewNamesBtn = createMenuButton("ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.43)
-local ViewHealthBtn = createMenuButton("ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.51)
-local ViewItemsBtn = createMenuButton("ViewItemsButton", "VIEW ITEMS 🎒: OFF", 0.59)
-local InfJumpBtn = createMenuButton("InfJumpButton", "INF JUMP 🦘: OFF", 0.67)
-local SpeedBoostBtn = createMenuButton("SpeedBoostButton", "SPEED BOOST ⚡ (2x): OFF", 0.75)
+-- Botones de visuales restantes
+local ViewPlayersBtn = createMenuButton("ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.53)
+local ViewNamesBtn = createMenuButton("ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.65)
+local ViewHealthBtn = createMenuButton("ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.77)
+
 ----------------------------------------------------
 -- DRAG Y MENÚS
 ----------------------------------------------------
@@ -305,27 +271,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
--- FUNCIONALIDADES DE MOVIMIENTO (SPEED Y JUMP REFORZADOS)
-----------------------------------------------------
-InfJumpBtn.MouseButton1Click:Connect(function()
-	infJumpEnabled = not infJumpEnabled
-	InfJumpBtn.Text = "INF JUMP 🦘: " .. (infJumpEnabled and "ON" or "OFF")
-	InfJumpBtn.TextColor3 = infJumpEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-end)
-
-SpeedBoostBtn.MouseButton1Click:Connect(function()
-	speedBoostEnabled = not speedBoostEnabled
-	SpeedBoostBtn.Text = "SPEED BOOST ⚡ (2x): " .. (speedBoostEnabled and "ON" or "OFF")
-	SpeedBoostBtn.TextColor3 = speedBoostEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-	
-	if not speedBoostEnabled and LocalPlayer.Character then
-		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if humanoid then humanoid.WalkSpeed = normalSpeed end
-	end
-end)
-
-----------------------------------------------------
--- BILLBOARD GUI Y ESP DE ITEMS PROFUNDO (BLOCKSPIN FIX)
+-- BILLBOARD GUI Y ESP
 ----------------------------------------------------
 local function getPlayerESP(player)
 	if not player.Character then return nil end
@@ -337,8 +283,8 @@ local function getPlayerESP(player)
 		bGui = Instance.new("BillboardGui")
 		bGui.Name = "ESP_Billboard"
 		bGui.Adornee = head
-		bGui.Size = UDim2.new(0, 220, 0, 150)
-		bGui.StudsOffset = Vector3.new(0, 3.2, 0)
+		bGui.Size = UDim2.new(0, 220, 0, 60)
+		bGui.StudsOffset = Vector3.new(0, 2.5, 0)
 		bGui.AlwaysOnTop = true
 		bGui.Parent = head
 
@@ -358,7 +304,7 @@ local function getPlayerESP(player)
 		local healthBg = Instance.new("Frame")
 		healthBg.Name = "HealthBg"
 		healthBg.Size = UDim2.new(0.7, 0, 0, 7)
-		healthBg.Position = UDim2.new(0.15, 0, 0.16, 0)
+		healthBg.Position = UDim2.new(0.15, 0, 0.4, 0)
 		healthBg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 		healthBg.BorderSizePixel = 1
 		healthBg.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -371,21 +317,6 @@ local function getPlayerESP(player)
 		healthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 		healthFill.BorderSizePixel = 0
 		healthFill.Parent = healthBg
-
-		local itemsFrame = Instance.new("Frame")
-		itemsFrame.Name = "ItemsFrame"
-		itemsFrame.Size = UDim2.new(1, 0, 0, 60)
-		itemsFrame.Position = UDim2.new(0, 0, 0.28, 0)
-		itemsFrame.BackgroundTransparency = 1
-		itemsFrame.Visible = false
-		itemsFrame.Parent = bGui
-
-		local UIListLayout = Instance.new("UIListLayout")
-		UIListLayout.FillDirection = Enum.FillDirection.Vertical
-		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-		UIListLayout.Padding = UDim.new(0, 2)
-		UIListLayout.Parent = itemsFrame
 	end
 	return bGui
 end
@@ -434,12 +365,6 @@ ViewHealthBtn.MouseButton1Click:Connect(function()
 	ViewHealthBtn.TextColor3 = viewHealthEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
-ViewItemsBtn.MouseButton1Click:Connect(function()
-	viewItemsEnabled = not viewItemsEnabled
-	ViewItemsBtn.Text = "VIEW ITEMS 🎒: " .. (viewItemsEnabled and "ON" or "OFF")
-	ViewItemsBtn.TextColor3 = viewItemsEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-end)
-
 local function updateESP()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player.Character then
@@ -461,65 +386,13 @@ local function updateESP()
 						end
 					end
 				end
-
-				local itemsFrame = bGui:FindFirstChild("ItemsFrame")
-				if itemsFrame then
-					itemsFrame.Visible = viewItemsEnabled
-					if viewItemsEnabled then
-						for _, child in ipairs(itemsFrame:GetChildren()) do
-							if not child:IsA("UIListLayout") then child:Destroy() end
-						end
-
-						local foundItems = {}
-
-						local function addFoundItem(itemName)
-							if itemName and not foundItems[itemName] then
-								foundItems[itemName] = true
-								local rarityColor = getItemRarityColor(itemName)
-
-								local txt = Instance.new("TextLabel")
-								txt.Size = UDim2.new(1, 0, 0, 14)
-								txt.BackgroundTransparency = 1
-								txt.Text = "• " .. itemName
-								txt.TextColor3 = rarityColor
-								txt.TextStrokeTransparency = 0
-								txt.TextSize = 12
-								txt.Font = Enum.Font.SourceSansBold
-								txt.Parent = itemsFrame
-							end
-						end
-
-						-- 1. Buscar en el Backpack clásico
-						local backpack = player:FindFirstChild("Backpack")
-						if backpack then
-							for _, tool in ipairs(backpack:GetChildren()) do addFoundItem(tool.Name) end
-						end
-						
-						-- 2. Buscar en el Character (herramientas equipadas)
-						for _, tool in ipairs(player.Character:GetChildren()) do
-							if tool:IsA("Tool") or tool:IsA("Model") then addFoundItem(tool.Name) end
-						end
-
-						-- 3. Buscar en todas las carpetas y contenedores internos del jugador (Blockspin / GTA custom inventories)
-						for _, container in ipairs(player:GetChildren()) do
-							if container:IsA("Folder") or container:IsA("Model") or container:IsA("Configuration") then
-								for _, sub in ipairs(container:GetChildren()) do
-									addFoundItem(sub.Name)
-									for _, subSub in ipairs(sub:GetChildren()) do
-										addFoundItem(subSub.Name)
-									end
-								end
-							end
-						end
-					end
-				end
 			end
 		end
 	end
 end
 
 ----------------------------------------------------
--- AIMBOT Y BUCLE PRINCIPAL (RENDERSTEPPED GLOBAL)
+-- AIMBOT Y BUCLE PRINCIPAL
 ----------------------------------------------------
 local function isValidTarget(part)
 	if not part or not part.Parent then return false end
@@ -569,29 +442,9 @@ local function getClosestTarget()
 	return closestPart
 end
 
--- Bucle de renderizado constante y ultra-preciso
 RunService.RenderStepped:Connect(function()
 	updateESP()
-
-	local character = LocalPlayer.Character
-	if character then
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			-- 1. Forzar Speed Boost (2x) esquivando bloqueos del juego
-			if speedBoostEnabled then
-				if humanoid.WalkSpeed ~= boostSpeed then
-					humanoid.WalkSpeed = boostSpeed
-				end
-			end
-
-			-- 2. Inf Jump robusto al mantener presionado espacio o botón de salto
-			if infJumpEnabled and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-				humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-			end
-		end
-	end
 	
-	-- 3. Manejo del Aimbot
 	if aimbotEnabled then
 		currentTarget = getClosestTarget()
 		if currentTarget then
