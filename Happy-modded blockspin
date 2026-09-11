@@ -18,11 +18,46 @@ local speedBoostEnabled = false
 
 local fovRadius = 100
 local normalSpeed = 16
-local boostSpeed = 22.4 -- Factor de ~1.4x para evitar el anti-cheat
+local boostSpeed = 32 -- Multiplicador a 2x exacto (16 * 2)
 
 local dragging = false
 local dragInput, dragStart, startPos
 local currentTarget = nil
+
+-- Colores de Rarity para Blockspin / GTA-like items
+local rarityColors = {
+	["legendary"] = Color3.fromRGB(255, 165, 0), -- Naranja
+	["epic"]      = Color3.fromRGB(163, 53, 238), -- Morado
+	["rare"]      = Color3.fromRGB(0, 112, 221),  -- Azul (ej. Escopeta)
+	["uncommon"]  = Color3.fromRGB(30, 255, 0),   -- Verde
+	["common"]    = Color3.fromRGB(200, 200, 200) -- Gris / Blanco
+}
+
+-- Función para identificar la rareza por nombre o propiedad del ítem
+local function getItemRarityColor(item)
+	if not item then return Color3.fromRGB(255, 255, 180) end
+	
+	-- Si el objeto tiene una propiedad de rareza en StringValue
+	local rarityVal = item:FindFirstChild("Rarity") or item:FindFirstChild("RarityValue")
+	if rarityVal and rarityVal:IsA("StringValue") then
+		local r = string.lower(rarityVal.Value)
+		if rarityColors[r] then return rarityColors[r] end
+	end
+	
+	-- Detección por nombre
+	local name = string.lower(item.Name)
+	if name:find("legendary") or name:find("gold") or name:find("sniper") then
+		return rarityColors["legendary"]
+	elseif name:find("epic") or name:find("rifle") or name:find("ak") or name:find("m4") then
+		return rarityColors["epic"]
+	elseif name:find("shotgun") or name:find("escopeta") or name:find("rare") or name:find("ump") then
+		return rarityColors["rare"]
+	elseif name:find("uncommon") or name:find("smg") or name:find("pistol") then
+		return rarityColors["uncommon"]
+	end
+
+	return rarityColors["common"]
+end
 
 -- 1. Crear Gui Principal
 local ScreenGui = Instance.new("ScreenGui")
@@ -200,7 +235,7 @@ local ViewNamesBtn = createMenuButton("ViewNamesButton", "VIEW NAMES 🏷️: OF
 local ViewHealthBtn = createMenuButton("ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.51)
 local ViewItemsBtn = createMenuButton("ViewItemsButton", "VIEW ITEMS 🎒: OFF", 0.59)
 local InfJumpBtn = createMenuButton("InfJumpButton", "INF JUMP 🦘: OFF", 0.67)
-local SpeedBoostBtn = createMenuButton("SpeedBoostButton", "SPEED BOOST ⚡ (1.4x): OFF", 0.75)
+local SpeedBoostBtn = createMenuButton("SpeedBoostButton", "SPEED BOOST ⚡ (2x): OFF", 0.75)
 ----------------------------------------------------
 -- DRAG Y MENÚS
 ----------------------------------------------------
@@ -287,18 +322,9 @@ InfJumpBtn.MouseButton1Click:Connect(function()
 	InfJumpBtn.TextColor3 = infJumpEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
-UserInputService.JumpRequest:Connect(function()
-	if infJumpEnabled and LocalPlayer.Character then
-		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-		end
-	end
-end)
-
 SpeedBoostBtn.MouseButton1Click:Connect(function()
 	speedBoostEnabled = not speedBoostEnabled
-	SpeedBoostBtn.Text = "SPEED BOOST ⚡ (1.4x): " .. (speedBoostEnabled and "ON" or "OFF")
+	SpeedBoostBtn.Text = "SPEED BOOST ⚡ (2x): " .. (speedBoostEnabled and "ON" or "OFF")
 	SpeedBoostBtn.TextColor3 = speedBoostEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 	
 	if not speedBoostEnabled and LocalPlayer.Character then
@@ -308,7 +334,7 @@ SpeedBoostBtn.MouseButton1Click:Connect(function()
 end)
 
 ----------------------------------------------------
--- BILLBOARD GUI (ESP Y MOSTRAR ITEMS)
+-- BILLBOARD GUI (ESP Y MOSTRAR ITEMS POR RAREZA)
 ----------------------------------------------------
 local function getPlayerESP(player)
 	if not player.Character then return nil end
@@ -364,10 +390,10 @@ local function getPlayerESP(player)
 		itemsFrame.Parent = bGui
 
 		local UIListLayout = Instance.new("UIListLayout")
-		UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+		UIListLayout.FillDirection = Enum.FillDirection.Vertical
 		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-		UIListLayout.Padding = UDim.new(0, 4)
+		UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+		UIListLayout.Padding = UDim.new(0, 2)
 		UIListLayout.Parent = itemsFrame
 	end
 	return bGui
@@ -423,21 +449,6 @@ ViewItemsBtn.MouseButton1Click:Connect(function()
 	ViewItemsBtn.TextColor3 = viewItemsEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
-local function getItemAssetId(item)
-	if not item then return nil end
-	if item:IsA("Tool") and item.TextureId ~= "" and item.TextureId ~= "rbxassetid://0" then
-		return item.TextureId
-	end
-	for _, child in ipairs(item:GetChildren()) do
-		if child:IsA("StringValue") and (child.Name == "Texture" or child.Name == "Icon" or child.Name == "Image") then
-			if child.Value ~= "" then return child.Value end
-		elseif child:IsA("Texture") or child:IsA("Decal") then
-			if child.Texture ~= "" then return child.Texture end
-		end
-	end
-	return nil
-end
-
 local function updateESP()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player.Character then
@@ -470,26 +481,17 @@ local function updateESP()
 
 						local function displayTool(item)
 							if not item:IsA("Tool") then return end
-							local assetId = getItemAssetId(item)
+							local rarityColor = getItemRarityColor(item)
 
-							if assetId then
-								local img = Instance.new("ImageLabel")
-								img.Size = UDim2.new(0, 24, 0, 24)
-								img.BackgroundTransparency = 1
-								img.Image = assetId
-								img.Parent = itemsFrame
-							else
-								local txt = Instance.new("TextLabel")
-								txt.Size = UDim2.new(0, 0, 0, 18)
-								txt.AutomaticSize = Enum.AutomaticSize.X
-								txt.BackgroundTransparency = 1
-								txt.Text = "[" .. item.Name .. "]"
-								txt.TextColor3 = Color3.fromRGB(255, 255, 180)
-								txt.TextStrokeTransparency = 0
-								txt.TextSize = 11
-								txt.Font = Enum.Font.SourceSansBold
-								txt.Parent = itemsFrame
-							end
+							local txt = Instance.new("TextLabel")
+							txt.Size = UDim2.new(1, 0, 0, 14)
+							txt.BackgroundTransparency = 1
+							txt.Text = "[" .. item.Name .. "]"
+							txt.TextColor3 = rarityColor
+							txt.TextStrokeTransparency = 0
+							txt.TextSize = 12
+							txt.Font = Enum.Font.SourceSansBold
+							txt.Parent = itemsFrame
 						end
 
 						if player:FindFirstChild("Backpack") then
@@ -504,7 +506,7 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- AIMBOT MEJORADO Y ESTABLE
+-- AIMBOT Y BUCLE PRINCIPAL
 ----------------------------------------------------
 local function isValidTarget(part)
 	if not part or not part.Parent then return false end
@@ -554,10 +556,21 @@ local function getClosestTarget()
 	return closestPart
 end
 
--- Bucle Principal
+-- Bucle de renderizado constante
 RunService.RenderStepped:Connect(function()
 	updateESP()
 
+	-- Manejo continuo de Inf Jump (Salto Infinito constante manteniendo presionado)
+	if infJumpEnabled and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+		if LocalPlayer.Character then
+			local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end
+	end
+
+	-- Manejo de Velocidad 2x (WalkSpeed = 32)
 	if speedBoostEnabled and LocalPlayer.Character then
 		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 		if humanoid and humanoid.WalkSpeed ~= boostSpeed then
@@ -565,6 +578,7 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 	
+	-- Manejo del Aimbot
 	if aimbotEnabled then
 		currentTarget = getClosestTarget()
 		if currentTarget then
