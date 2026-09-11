@@ -20,7 +20,7 @@ local currentTarget = nil
 
 -- 1. Crear Gui Principal
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BlockspinGuiSimple"
+ScreenGui.Name = "BlockspinGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -46,13 +46,23 @@ FOVStroke.Thickness = 2
 FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 FOVStroke.Parent = FOVCircle
 
--- 3. Barra Principal
+-- 2.1 Línea Roja de Trazado (Silent Aim Snapline)
+local SnapLine = Instance.new("Frame")
+SnapLine.Name = "SnapLine"
+SnapLine.AnchorPoint = Vector2.new(0, 0.5)
+SnapLine.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+SnapLine.BorderSizePixel = 0
+SnapLine.Visible = false
+SnapLine.Size = UDim2.new(0, 0, 0, 2)
+SnapLine.Parent = ScreenGui
+
+-- 3. Barra Flotante Principal
 local MainBar = Instance.new("Frame")
 MainBar.Name = "MainBar"
-MainBar.Size = UDim2.new(0, 360, 0, 35)
-MainBar.Position = UDim2.new(0.5, -180, 0.1, 0)
-MainBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-MainBar.BackgroundTransparency = 0.15
+MainBar.Size = UDim2.new(0, 390, 0, 35)
+MainBar.Position = UDim2.new(0.5, -195, 0.1, 0)
+MainBar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainBar.BackgroundTransparency = 0.2
 MainBar.BorderSizePixel = 0
 MainBar.Active = true
 MainBar.Parent = ScreenGui
@@ -87,20 +97,20 @@ OpenMenuBtn.Name = "OpenMenuButton"
 OpenMenuBtn.Size = UDim2.new(1, -50, 1, 0)
 OpenMenuBtn.Position = UDim2.new(0, 50, 0, 0)
 OpenMenuBtn.BackgroundTransparency = 1
-OpenMenuBtn.Text = "Blockspin 🔫 - 🎯 Menú Limpio"
+OpenMenuBtn.Text = "Blockspin 🔫 / ⚡ Happy-modded ⚡"
 OpenMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-OpenMenuBtn.TextSize = 15
+OpenMenuBtn.TextSize = 13
 OpenMenuBtn.Font = Enum.Font.SourceSansBold
 OpenMenuBtn.Parent = MainBar
 
--- 4. Menú Principal (Más corto)
+-- 4. Menú Desplegable
 local MenuFrame = Instance.new("Frame")
 MenuFrame.Name = "MenuFrame"
 MenuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MenuFrame.Size = UDim2.new(0, 320, 0, 380)
+MenuFrame.Size = UDim2.new(0, 320, 0, 400)
 MenuFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MenuFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MenuFrame.BackgroundTransparency = 0.15
+MenuFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MenuFrame.BackgroundTransparency = 0.1
 MenuFrame.BorderSizePixel = 0
 MenuFrame.Visible = false
 MenuFrame.Parent = ScreenGui
@@ -110,11 +120,11 @@ UICornerMenu.CornerRadius = UDim.new(0, 10)
 UICornerMenu.Parent = MenuFrame
 
 local MenuTitle = Instance.new("TextLabel")
-MenuTitle.Size = UDim2.new(1, 0, 0, 35)
+MenuTitle.Size = UDim2.new(1, 0, 0, 40)
 MenuTitle.BackgroundTransparency = 1
-MenuTitle.Text = "Menú (Aimbot & Visuales)"
+MenuTitle.Text = "Blockspin 🔫 / ⚡ Happy-modded ⚡"
 MenuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-MenuTitle.TextSize = 20
+MenuTitle.TextSize = 15
 MenuTitle.Font = Enum.Font.SourceSansBold
 MenuTitle.Parent = MenuFrame
 
@@ -123,7 +133,7 @@ local function createMenuButton(name, text, posY)
 	btn.Name = name
 	btn.Size = UDim2.new(0.85, 0, 0, 36)
 	btn.Position = UDim2.new(0.075, 0, posY, 0)
-	btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 	btn.Text = text
 	btn.TextColor3 = Color3.fromRGB(255, 100, 100)
 	btn.TextSize = 14
@@ -137,14 +147,12 @@ local function createMenuButton(name, text, posY)
 	return btn
 end
 
--- Botones Activos
-local AimbotBtn = createMenuButton("AimbotButton", "Aimbot 🎯: OFF", 0.12)
+local AimbotBtn = createMenuButton("AimbotButton", "Silent Aim 🎯: OFF", 0.12)
 local FOVBtn = createMenuButton("FOVButton", "FOV Circle 🟡: OFF", 0.23)
 
--- Slider FOV
 local FOVSliderFrame = Instance.new("Frame")
 FOVSliderFrame.Name = "FOVSliderFrame"
-FOVSliderFrame.Size = UDim2.new(0.85, 0, 0, 55)
+FOVSliderFrame.Size = UDim2.new(0.85, 0, 0, 50)
 FOVSliderFrame.Position = UDim2.new(0.075, 0, 0.35, 0)
 FOVSliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 FOVSliderFrame.BackgroundTransparency = 0.5
@@ -155,7 +163,7 @@ UICornerSliderFrame.CornerRadius = UDim.new(0, 8)
 UICornerSliderFrame.Parent = FOVSliderFrame
 
 local FOVLabel = Instance.new("TextLabel")
-FOVLabel.Size = UDim2.new(1, 0, 0, 22)
+FOVLabel.Size = UDim2.new(1, 0, 0, 20)
 FOVLabel.BackgroundTransparency = 1
 FOVLabel.Text = "Tamaño FOV: 100"
 FOVLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -165,20 +173,16 @@ FOVLabel.Parent = FOVSliderFrame
 
 local SliderLine = Instance.new("Frame")
 SliderLine.Name = "SliderLine"
-SliderLine.Size = UDim2.new(0.8, 0, 0, 6)
-SliderLine.Position = UDim2.new(0.1, 0, 0.6, 0)
+SliderLine.Size = UDim2.new(0.8, 0, 0, 5)
+SliderLine.Position = UDim2.new(0.1, 0, 0.65, 0)
 SliderLine.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 SliderLine.BorderSizePixel = 0
 SliderLine.Parent = FOVSliderFrame
 
-local UICornerLine = Instance.new("UICorner")
-UICornerLine.CornerRadius = UDim.new(1, 0)
-UICornerLine.Parent = SliderLine
-
 local SliderKnob = Instance.new("TextButton")
 SliderKnob.Name = "SliderKnob"
 SliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
-SliderKnob.Size = UDim2.new(0, 16, 0, 16)
+SliderKnob.Size = UDim2.new(0, 14, 0, 14)
 SliderKnob.Position = UDim2.new(0.33, 0, 0.5, 0)
 SliderKnob.BackgroundColor3 = Color3.fromRGB(255, 230, 0)
 SliderKnob.Text = ""
@@ -188,13 +192,11 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
--- Botones de visuales restantes
-local ViewPlayersBtn = createMenuButton("ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.53)
-local ViewNamesBtn = createMenuButton("ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.65)
-local ViewHealthBtn = createMenuButton("ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.77)
-
+local ViewPlayersBtn = createMenuButton("ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.52)
+local ViewNamesBtn = createMenuButton("ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.64)
+local ViewHealthBtn = createMenuButton("ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.76)
 ----------------------------------------------------
--- DRAG Y MENÚS
+-- LÓGICA DE MOVIMIENTO DE BARRA (DRAG)
 ----------------------------------------------------
 local function updateDrag(input)
 	local delta = input.Position - dragStart
@@ -228,8 +230,9 @@ end)
 
 AimbotBtn.MouseButton1Click:Connect(function()
 	aimbotEnabled = not aimbotEnabled
-	AimbotBtn.Text = "Aimbot 🎯: " .. (aimbotEnabled and "ON" or "OFF")
+	AimbotBtn.Text = "Silent Aim 🎯: " .. (aimbotEnabled and "ON" or "OFF")
 	AimbotBtn.TextColor3 = aimbotEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+	SnapLine.Visible = aimbotEnabled
 	if not aimbotEnabled then currentTarget = nil end
 end)
 
@@ -240,6 +243,7 @@ FOVBtn.MouseButton1Click:Connect(function()
 	FOVBtn.TextColor3 = fovEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
+-- SLIDER LOGIC
 local draggingSlider = false
 local function updateSlider(input)
 	local sliderX = SliderLine.AbsolutePosition.X
@@ -271,7 +275,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
--- BILLBOARD GUI Y ESP
+-- SISTEMA ESP / BILLBOARD
 ----------------------------------------------------
 local function getPlayerESP(player)
 	if not player.Character then return nil end
@@ -392,7 +396,7 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- AIMBOT Y BUCLE PRINCIPAL
+-- SILENT AIM Y BUCLE RUNSERVICE (LÍNEA ROJA Y SELECCIÓN)
 ----------------------------------------------------
 local function isValidTarget(part)
 	if not part or not part.Parent then return false end
@@ -402,11 +406,9 @@ local function isValidTarget(part)
 	local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 	if not onScreen then return false end
 	
-	if fovEnabled then
-		local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-		local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
-		if distance > fovRadius then return false end
-	end
+	local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+	local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
+	if distance > fovRadius then return false end
 
 	return true
 end
@@ -415,7 +417,7 @@ local function getClosestTarget()
 	if isValidTarget(currentTarget) then return currentTarget end
 
 	local closestPart = nil
-	local shortestDistance = fovEnabled and fovRadius or math.huge
+	local shortestDistance = fovRadius
 	local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -448,10 +450,27 @@ RunService.RenderStepped:Connect(function()
 	if aimbotEnabled then
 		currentTarget = getClosestTarget()
 		if currentTarget then
-			local targetCFrame = CFrame.new(Camera.CFrame.Position, currentTarget.Position)
-			Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.45)
+			local screenPos, onScreen = Camera:WorldToViewportPoint(currentTarget.Position)
+			if onScreen then
+				local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+				local targetPos2D = Vector2.new(screenPos.X, screenPos.Y)
+				
+				-- Actualizar la Línea Roja de Trazado desde el centro (pantalla) hasta el jugador
+				local distance = (targetPos2D - viewportCenter).Magnitude
+				local angle = math.deg(math.atan2(targetPos2D.Y - viewportCenter.Y, targetPos2D.X - viewportCenter.X))
+				
+				SnapLine.Position = UDim2.new(0, viewportCenter.X, 0, viewportCenter.Y)
+				SnapLine.Size = UDim2.new(0, distance, 0, 2)
+				SnapLine.Rotation = angle
+				SnapLine.Visible = true
+			else
+				SnapLine.Visible = false
+			end
+		else
+			SnapLine.Visible = false
 		end
 	else
+		SnapLine.Visible = false
 		currentTarget = nil
 	end
 end)
