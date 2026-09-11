@@ -16,7 +16,12 @@ local viewHealthEnabled = false
 local fovRadius = 100
 local dragging = false
 local dragInput, dragStart, startPos
+
+-- Tablas y Variables Aimbot / Espectear
 local currentTarget = nil
+local fixedTarget = nil
+local aliasedPlayers = {}
+local spectatingPlayer = nil
 
 -- 1. Crear Gui Principal
 local ScreenGui = Instance.new("ScreenGui")
@@ -46,7 +51,7 @@ FOVStroke.Thickness = 2
 FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 FOVStroke.Parent = FOVCircle
 
--- 3. Barra Flotante Principal con "Blockspin 🔫 / ⚡ Happy-modded ⚡"
+-- 3. Barra Flotante Principal
 local MainBar = Instance.new("Frame")
 MainBar.Name = "MainBar"
 MainBar.Size = UDim2.new(0, 390, 0, 35)
@@ -61,7 +66,6 @@ local UICornerBar = Instance.new("UICorner")
 UICornerBar.CornerRadius = UDim.new(0, 8)
 UICornerBar.Parent = MainBar
 
--- Botón de Arraste (+)
 local DragBtn = Instance.new("TextButton")
 DragBtn.Name = "DragButton"
 DragBtn.Size = UDim2.new(0, 35, 1, 0)
@@ -83,7 +87,6 @@ Separator.TextSize = 18
 Separator.Font = Enum.Font.SourceSans
 Separator.Parent = MainBar
 
--- Botón para abrir el menú con el nombre exacto Blockspin y Happy-modded
 local OpenMenuBtn = Instance.new("TextButton")
 OpenMenuBtn.Name = "OpenMenuButton"
 OpenMenuBtn.Size = UDim2.new(1, -50, 1, 0)
@@ -95,11 +98,11 @@ OpenMenuBtn.TextSize = 13
 OpenMenuBtn.Font = Enum.Font.SourceSansBold
 OpenMenuBtn.Parent = MainBar
 
--- 4. Menú Desplegable
+-- 4. Menú Desplegable Rediseñado con Lateral
 local MenuFrame = Instance.new("Frame")
 MenuFrame.Name = "MenuFrame"
 MenuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MenuFrame.Size = UDim2.new(0, 320, 0, 400)
+MenuFrame.Size = UDim2.new(0, 520, 0, 380)
 MenuFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MenuFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MenuFrame.BackgroundTransparency = 0.1
@@ -111,72 +114,125 @@ local UICornerMenu = Instance.new("UICorner")
 UICornerMenu.CornerRadius = UDim.new(0, 10)
 UICornerMenu.Parent = MenuFrame
 
-local MenuTitle = Instance.new("TextLabel")
-MenuTitle.Size = UDim2.new(1, 0, 0, 40)
-MenuTitle.BackgroundTransparency = 1
-MenuTitle.Text = "Blockspin 🔫 / ⚡ Happy-modded ⚡"
-MenuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-MenuTitle.TextSize = 15
-MenuTitle.Font = Enum.Font.SourceSansBold
-MenuTitle.Parent = MenuFrame
+-- Panel Izquierdo (Pestañas)
+local LeftTabFrame = Instance.new("Frame")
+LeftTabFrame.Name = "LeftTabFrame"
+LeftTabFrame.Size = UDim2.new(0, 120, 1, 0)
+LeftTabFrame.Position = UDim2.new(0, 0, 0, 0)
+LeftTabFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+LeftTabFrame.BackgroundTransparency = 0.3
+LeftTabFrame.Parent = MenuFrame
 
-local function createMenuButton(name, text, posY)
+local UICornerLeft = Instance.new("UICorner")
+UICornerLeft.CornerRadius = UDim.new(0, 10)
+UICornerLeft.Parent = LeftTabFrame
+
+local TabDivider = Instance.new("Frame")
+TabDivider.Size = UDim2.new(0, 2, 1, 0)
+TabDivider.Position = UDim2.new(1, -2, 0, 0)
+TabDivider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+TabDivider.BorderSizePixel = 0
+TabDivider.Parent = LeftTabFrame
+
+local TabAimbotBtn = Instance.new("TextButton")
+TabAimbotBtn.Size = UDim2.new(0.9, 0, 0, 40)
+TabAimbotBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
+TabAimbotBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TabAimbotBtn.Text = "Aimbot 🎯"
+TabAimbotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TabAimbotBtn.Font = Enum.Font.SourceSansBold
+TabAimbotBtn.TextSize = 14
+TabAimbotBtn.Parent = LeftTabFrame
+
+local UICornerTab1 = Instance.new("UICorner")
+UICornerTab1.CornerRadius = UDim.new(0, 6)
+UICornerTab1.Parent = TabAimbotBtn
+
+local TabEspectearBtn = Instance.new("TextButton")
+TabEspectearBtn.Size = UDim2.new(0.9, 0, 0, 40)
+TabEspectearBtn.Position = UDim2.new(0.05, 0, 0.23, 0)
+TabEspectearBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+TabEspectearBtn.Text = "Espectear 👁️"
+TabEspectearBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+TabEspectearBtn.Font = Enum.Font.SourceSansBold
+TabEspectearBtn.TextSize = 14
+TabEspectearBtn.Parent = LeftTabFrame
+
+local UICornerTab2 = Instance.new("UICorner")
+UICornerTab2.CornerRadius = UDim.new(0, 6)
+UICornerTab2.Parent = TabEspectearBtn
+
+-- Contenedores Derecho
+local AimbotPage = Instance.new("Frame")
+AimbotPage.Name = "AimbotPage"
+AimbotPage.Size = UDim2.new(1, -130, 1, -10)
+AimbotPage.Position = UDim2.new(0, 125, 0, 5)
+AimbotPage.BackgroundTransparency = 1
+AimbotPage.Parent = MenuFrame
+
+local EspectearPage = Instance.new("Frame")
+EspectearPage.Name = "EspectearPage"
+EspectearPage.Size = UDim2.new(1, -130, 1, -10)
+EspectearPage.Position = UDim2.new(0, 125, 0, 5)
+EspectearPage.BackgroundTransparency = 1
+EspectearPage.Visible = false
+EspectearPage.Parent = MenuFrame
+
+-- Función creadora de botones
+local function createMenuButton(parent, name, text, posY)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
-	btn.Size = UDim2.new(0.85, 0, 0, 36)
-	btn.Position = UDim2.new(0.075, 0, posY, 0)
+	btn.Size = UDim2.new(0.9, 0, 0, 32)
+	btn.Position = UDim2.new(0.05, 0, posY, 0)
 	btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 	btn.Text = text
 	btn.TextColor3 = Color3.fromRGB(255, 100, 100)
-	btn.TextSize = 14
+	btn.TextSize = 13
 	btn.Font = Enum.Font.SourceSansBold
-	btn.Parent = MenuFrame
+	btn.Parent = parent
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = UDim.new(0, 6)
 	corner.Parent = btn
 
 	return btn
 end
 
--- Funciones del menú
-local AimbotBtn = createMenuButton("AimbotButton", "Aimbot 🎯: OFF", 0.12)
-local FOVBtn = createMenuButton("FOVButton", "FOV Circle 🟡: OFF", 0.23)
+-- Botones Página Aimbot
+local AimbotBtn = createMenuButton(AimbotPage, "AimbotButton", "Aimbot 🎯: OFF", 0.02)
+local FOVBtn = createMenuButton(AimbotPage, "FOVButton", "FOV Circle 🟡: OFF", 0.12)
 
 -- Slider FOV
 local FOVSliderFrame = Instance.new("Frame")
-FOVSliderFrame.Name = "FOVSliderFrame"
-FOVSliderFrame.Size = UDim2.new(0.85, 0, 0, 50)
-FOVSliderFrame.Position = UDim2.new(0.075, 0, 0.35, 0)
+FOVSliderFrame.Size = UDim2.new(0.9, 0, 0, 42)
+FOVSliderFrame.Position = UDim2.new(0.05, 0, 0.22, 0)
 FOVSliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 FOVSliderFrame.BackgroundTransparency = 0.5
-FOVSliderFrame.Parent = MenuFrame
+FOVSliderFrame.Parent = AimbotPage
 
-local UICornerSliderFrame = Instance.new("UICorner")
-UICornerSliderFrame.CornerRadius = UDim.new(0, 8)
-UICornerSliderFrame.Parent = FOVSliderFrame
+local UICornerSlider = Instance.new("UICorner")
+UICornerSlider.CornerRadius = UDim.new(0, 6)
+UICornerSlider.Parent = FOVSliderFrame
 
 local FOVLabel = Instance.new("TextLabel")
-FOVLabel.Size = UDim2.new(1, 0, 0, 20)
+FOVLabel.Size = UDim2.new(1, 0, 0, 16)
 FOVLabel.BackgroundTransparency = 1
 FOVLabel.Text = "Tamaño FOV: 100"
 FOVLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVLabel.TextSize = 13
+FOVLabel.TextSize = 12
 FOVLabel.Font = Enum.Font.SourceSansBold
 FOVLabel.Parent = FOVSliderFrame
 
 local SliderLine = Instance.new("Frame")
-SliderLine.Name = "SliderLine"
-SliderLine.Size = UDim2.new(0.8, 0, 0, 5)
+SliderLine.Size = UDim2.new(0.8, 0, 0, 4)
 SliderLine.Position = UDim2.new(0.1, 0, 0.65, 0)
 SliderLine.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 SliderLine.BorderSizePixel = 0
 SliderLine.Parent = FOVSliderFrame
 
 local SliderKnob = Instance.new("TextButton")
-SliderKnob.Name = "SliderKnob"
 SliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
-SliderKnob.Size = UDim2.new(0, 14, 0, 14)
+SliderKnob.Size = UDim2.new(0, 12, 0, 12)
 SliderKnob.Position = UDim2.new(0.33, 0, 0.5, 0)
 SliderKnob.BackgroundColor3 = Color3.fromRGB(255, 230, 0)
 SliderKnob.Text = ""
@@ -186,10 +242,48 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
--- Botones de visuales
-local ViewPlayersBtn = createMenuButton("ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.52)
-local ViewNamesBtn = createMenuButton("ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.64)
-local ViewHealthBtn = createMenuButton("ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.76)
+-- Lista Escroleable de Jugadores (Aimbot)
+local PlayerListScroll = Instance.new("ScrollingFrame")
+PlayerListScroll.Name = "PlayerListScroll"
+PlayerListScroll.Size = UDim2.new(0.95, 0, 0.62, 0)
+PlayerListScroll.Position = UDim2.new(0.025, 0, 0.35, 0)
+PlayerListScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+PlayerListScroll.BackgroundTransparency = 0.4
+PlayerListScroll.BorderSizePixel = 0
+PlayerListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+PlayerListScroll.ScrollBarThickness = 4
+PlayerListScroll.Parent = AimbotPage
+
+local UIListLayoutScroll = Instance.new("UIListLayout")
+UIListLayoutScroll.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayoutScroll.Padding = UDim.new(0, 4)
+UIListLayoutScroll.Parent = PlayerListScroll
+
+-- Botones Página Espectear
+local ViewPlayersBtn = createMenuButton(EspectearPage, "ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.05)
+local ViewNamesBtn = createMenuButton(EspectearPage, "ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.16)
+local ViewHealthBtn = createMenuButton(EspectearPage, "ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.27)
+----------------------------------------------------
+-- CAMBIO DE PESTAÑAS
+----------------------------------------------------
+TabAimbotBtn.MouseButton1Click:Connect(function()
+	AimbotPage.Visible = true
+	EspectearPage.Visible = false
+	TabAimbotBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	TabAimbotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TabEspectearBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	TabEspectearBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+end)
+
+TabEspectearBtn.MouseButton1Click:Connect(function()
+	AimbotPage.Visible = false
+	EspectearPage.Visible = true
+	TabEspectearBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	TabEspectearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TabAimbotBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	TabAimbotBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+end)
+
 ----------------------------------------------------
 -- LÓGICA DE MOVIMIENTO DE BARRA (DRAG)
 ----------------------------------------------------
@@ -269,7 +363,128 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
--- SISTEMA ESP / BILLBOARD
+-- LISTA DE JUGADORES Y ACCIONES (VER, ALEAR, FIJAR)
+----------------------------------------------------
+local function updatePlayerList()
+	for _, child in ipairs(PlayerListScroll:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+
+	local yOffset = 0
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local row = Instance.new("Frame")
+			row.Size = UDim2.new(1, -6, 0, 30)
+			row.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+			row.Parent = PlayerListScroll
+
+			local rCorner = Instance.new("UICorner")
+			rCorner.CornerRadius = UDim.new(0, 4)
+			rCorner.Parent = row
+
+			local pLabel = Instance.new("TextLabel")
+			pLabel.Size = UDim2.new(0.35, 0, 1, 0)
+			pLabel.Position = UDim2.new(0.02, 0, 0, 0)
+			pLabel.BackgroundTransparency = 1
+			pLabel.Text = plr.Name
+			pLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			pLabel.TextXAlignment = Enum.TextXAlignment.Left
+			pLabel.TextSize = 11
+			pLabel.Font = Enum.Font.SourceSansBold
+			pLabel.Parent = row
+
+			-- Botón Ver (Espectear)
+			local vBtn = Instance.new("TextButton")
+			vBtn.Size = UDim2.new(0.18, 0, 0.8, 0)
+			vBtn.Position = UDim2.new(0.38, 0, 0.1, 0)
+			vBtn.BackgroundColor3 = (spectatingPlayer == plr) and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(45, 45, 45)
+			vBtn.Text = "Ver"
+			vBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			vBtn.TextSize = 11
+			vBtn.Font = Enum.Font.SourceSansBold
+			vBtn.Parent = row
+
+			local vCorner = Instance.new("UICorner")
+			vCorner.CornerRadius = UDim.new(0, 4)
+			vCorner.Parent = vBtn
+
+			vBtn.MouseButton1Click:Connect(function()
+				if spectatingPlayer == plr then
+					spectatingPlayer = nil
+					Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+				else
+					spectatingPlayer = plr
+					if plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
+						Camera.CameraSubject = plr.Character:FindFirstChildOfClass("Humanoid")
+					end
+				end
+				updatePlayerList()
+			end)
+
+			-- Botón Alear (Aliado / Ignorar)
+			local aBtn = Instance.new("TextButton")
+			aBtn.Size = UDim2.new(0.18, 0, 0.8, 0)
+			aBtn.Position = UDim2.new(0.58, 0, 0.1, 0)
+			aBtn.BackgroundColor3 = aliasedPlayers[plr.UserId] and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(45, 45, 45)
+			aBtn.Text = aliasedPlayers[plr.UserId] and "Aliado" or "Alear"
+			aBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			aBtn.TextSize = 11
+			aBtn.Font = Enum.Font.SourceSansBold
+			aBtn.Parent = row
+
+			local aCorner = Instance.new("UICorner")
+			aCorner.CornerRadius = UDim.new(0, 4)
+			aCorner.Parent = aBtn
+
+			aBtn.MouseButton1Click:Connect(function()
+				aliasedPlayers[plr.UserId] = not aliasedPlayers[plr.UserId]
+				updatePlayerList()
+			end)
+
+			-- Botón Fijar / Desfijar
+			local fBtn = Instance.new("TextButton")
+			fBtn.Size = UDim2.new(0.2, 0, 0.8, 0)
+			fBtn.Position = UDim2.new(0.78, 0, 0.1, 0)
+			fBtn.BackgroundColor3 = (fixedTarget == plr) and Color3.fromRGB(180, 0, 255) or Color3.fromRGB(45, 45, 45)
+			fBtn.Text = (fixedTarget == plr) and "Desfijar" or "Fijar"
+			fBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			fBtn.TextSize = 11
+			fBtn.Font = Enum.Font.SourceSansBold
+			fBtn.Parent = row
+
+			local fCorner = Instance.new("UICorner")
+			fCorner.CornerRadius = UDim.new(0, 4)
+			fCorner.Parent = fBtn
+
+			fBtn.MouseButton1Click:Connect(function()
+				if fixedTarget == plr then
+					fixedTarget = nil
+				else
+					fixedTarget = plr
+				end
+				updatePlayerList()
+			end)
+
+			yOffset = yOffset + 34
+		end
+	end
+	PlayerListScroll.CanvasSize = UDim2.new(0, 0, 0, yOffset)
+end
+
+Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(function(plr)
+	if fixedTarget == plr then fixedTarget = nil end
+	if spectatingPlayer == plr then 
+		spectatingPlayer = nil 
+		Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	end
+	aliasedPlayers[plr.UserId] = nil
+	updatePlayerList()
+end)
+updatePlayerList()
+
+----------------------------------------------------
+-- SISTEMA ESP / VISUALES
 ----------------------------------------------------
 local function getPlayerESP(player)
 	if not player.Character then return nil end
@@ -390,17 +605,20 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- AIMBOT INSTANTÁNEO Y BUCLE RUNSERVICE
+-- LÓGICA DE AIMBOT INSTANTÁNEO Y FIJADO
 ----------------------------------------------------
-local function isValidTarget(part)
+local function isValidTarget(part, player)
 	if not part or not part.Parent then return false end
 	local humanoid = part.Parent:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then return false end
 
+	-- Si está aleado, se ignora
+	if player and aliasedPlayers[player.UserId] then return false end
+
 	local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 	if not onScreen then return false end
 	
-	if fovEnabled then
+	if fovEnabled and not fixedTarget then
 		local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 		local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
 		if distance > fovRadius then return false end
@@ -409,20 +627,31 @@ local function isValidTarget(part)
 	return true
 end
 
-local function getClosestTarget()
-	if isValidTarget(currentTarget) then return currentTarget end
+local function getTarget()
+	-- 1. Si hay un objetivo FIJADO manualmente
+	if fixedTarget then
+		if fixedTarget.Character then
+			local head = fixedTarget.Character:FindFirstChild("Head")
+			if isValidTarget(head, fixedTarget) then
+				return head
+			end
+		end
+		return nil
+	end
+
+	-- 2. Búsqueda normal por cercanía de FOV
+	if isValidTarget(currentTarget, nil) then return currentTarget end
 
 	local closestPart = nil
 	local shortestDistance = fovEnabled and fovRadius or math.huge
 	local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
 	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer and player.Character then
+		if player ~= LocalPlayer and player.Character and not aliasedPlayers[player.UserId] then
 			local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
 			if humanoid and humanoid.Health > 0 then
 				local targetPart = player.Character:FindFirstChild("Head") 
 					or player.Character:FindFirstChild("UpperTorso") 
-					or player.Character:FindFirstChild("Torso")
 
 				if targetPart then
 					local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
@@ -444,9 +673,8 @@ RunService.RenderStepped:Connect(function()
 	updateESP()
 	
 	if aimbotEnabled then
-		currentTarget = getClosestTarget()
+		currentTarget = getTarget()
 		if currentTarget then
-			-- BLOQUEO INSTANTÁNEO ABSOLUTO (Sin Lerp)
 			Camera.CFrame = CFrame.new(Camera.CFrame.Position, currentTarget.Position)
 		end
 	else
