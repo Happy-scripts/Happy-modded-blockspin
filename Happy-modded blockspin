@@ -18,7 +18,7 @@ local speedBoostEnabled = false
 
 local fovRadius = 100
 local normalSpeed = 16
-local boostSpeed = 32 -- 2x exacto
+local boostSpeed = 32 -- Multiplicador exacto a 2x
 
 local dragging = false
 local dragInput, dragStart, startPos
@@ -52,7 +52,7 @@ end
 
 -- 1. Crear Gui Principal
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BlockspinGui"
+ScreenGui.Name = "BlockspinGuiUltimate"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -96,6 +96,7 @@ UICornerBar.Parent = MainBar
 local DragBtn = Instance.new("TextButton")
 DragBtn.Name = "DragButton"
 DragBtn.Size = UDim2.new(0, 35, 1, 0)
+DragBtn.Position = UDim2.new(0, 0, 0, 0)
 DragBtn.BackgroundTransparency = 1
 DragBtn.Text = "+"
 DragBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -118,7 +119,7 @@ OpenMenuBtn.Name = "OpenMenuButton"
 OpenMenuBtn.Size = UDim2.new(1, -50, 1, 0)
 OpenMenuBtn.Position = UDim2.new(0, 50, 0, 0)
 OpenMenuBtn.BackgroundTransparency = 1
-OpenMenuBtn.Text = "Blockspin 🔫 - ⚡ Fix-Mod ⚡"
+OpenMenuBtn.Text = "Blockspin 🔫 - ⚡ Ultimate Fix ⚡"
 OpenMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenMenuBtn.TextSize = 15
 OpenMenuBtn.Font = Enum.Font.SourceSansBold
@@ -143,7 +144,7 @@ UICornerMenu.Parent = MenuFrame
 local MenuTitle = Instance.new("TextLabel")
 MenuTitle.Size = UDim2.new(1, 0, 0, 35)
 MenuTitle.BackgroundTransparency = 1
-MenuTitle.Text = "Menú Principal (Fix)"
+MenuTitle.Text = "Menú Principal (Ultimate)"
 MenuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 MenuTitle.TextSize = 20
 MenuTitle.Font = Enum.Font.SourceSansBold
@@ -304,22 +305,12 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
--- FUNCIONALIDADES DE MOVIMIENTO (SALTO CORREGIDO)
+-- FUNCIONALIDADES DE MOVIMIENTO (SPEED Y JUMP REFORZADOS)
 ----------------------------------------------------
 InfJumpBtn.MouseButton1Click:Connect(function()
 	infJumpEnabled = not infJumpEnabled
 	InfJumpBtn.Text = "INF JUMP 🦘: " .. (infJumpEnabled and "ON" or "OFF")
 	InfJumpBtn.TextColor3 = infJumpEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-end)
-
--- Sistema de Salto Infinito optimizado mediante JumpRequest (mantiene presionado)
-UserInputService.JumpRequest:Connect(function()
-	if infJumpEnabled and LocalPlayer.Character then
-		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-		end
-	end
 end)
 
 SpeedBoostBtn.MouseButton1Click:Connect(function()
@@ -334,7 +325,7 @@ SpeedBoostBtn.MouseButton1Click:Connect(function()
 end)
 
 ----------------------------------------------------
--- BILLBOARD GUI Y ESP DE ITEMS CORREGIDO
+-- BILLBOARD GUI Y ESP DE ITEMS PROFUNDO (BLOCKSPIN FIX)
 ----------------------------------------------------
 local function getPlayerESP(player)
 	if not player.Character then return nil end
@@ -346,7 +337,7 @@ local function getPlayerESP(player)
 		bGui = Instance.new("BillboardGui")
 		bGui.Name = "ESP_Billboard"
 		bGui.Adornee = head
-		bGui.Size = UDim2.new(0, 220, 0, 140)
+		bGui.Size = UDim2.new(0, 220, 0, 150)
 		bGui.StudsOffset = Vector3.new(0, 3.2, 0)
 		bGui.AlwaysOnTop = true
 		bGui.Parent = head
@@ -383,7 +374,7 @@ local function getPlayerESP(player)
 
 		local itemsFrame = Instance.new("Frame")
 		itemsFrame.Name = "ItemsFrame"
-		itemsFrame.Size = UDim2.new(1, 0, 0, 50)
+		itemsFrame.Size = UDim2.new(1, 0, 0, 60)
 		itemsFrame.Position = UDim2.new(0, 0, 0.28, 0)
 		itemsFrame.BackgroundTransparency = 1
 		itemsFrame.Visible = false
@@ -481,38 +472,43 @@ local function updateESP()
 
 						local foundItems = {}
 
-						local function addFoundItem(itemObj)
-							if itemObj and (itemObj:IsA("Tool") or itemObj:IsA("Model") or itemObj:IsA("Part")) then
-								if not foundItems[itemObj.Name] then
-									foundItems[itemObj.Name] = true
-									local rarityColor = getItemRarityColor(itemObj.Name)
+						local function addFoundItem(itemName)
+							if itemName and not foundItems[itemName] then
+								foundItems[itemName] = true
+								local rarityColor = getItemRarityColor(itemName)
 
-									local txt = Instance.new("TextLabel")
-									txt.Size = UDim2.new(1, 0, 0, 14)
-									txt.BackgroundTransparency = 1
-									txt.Text = "• " .. itemObj.Name
-									txt.TextColor3 = rarityColor
-									txt.TextStrokeTransparency = 0
-									txt.TextSize = 12
-									txt.Font = Enum.Font.SourceSansBold
-									txt.Parent = itemsFrame
-								end
+								local txt = Instance.new("TextLabel")
+								txt.Size = UDim2.new(1, 0, 0, 14)
+								txt.BackgroundTransparency = 1
+								txt.Text = "• " .. itemName
+								txt.TextColor3 = rarityColor
+								txt.TextStrokeTransparency = 0
+								txt.TextSize = 12
+								txt.Font = Enum.Font.SourceSansBold
+								txt.Parent = itemsFrame
 							end
 						end
 
-						-- Buscar en Backpack estándar
+						-- 1. Buscar en el Backpack clásico
 						local backpack = player:FindFirstChild("Backpack")
 						if backpack then
-							for _, tool in ipairs(backpack:GetChildren()) do addFoundItem(tool) end
+							for _, tool in ipairs(backpack:GetChildren()) do addFoundItem(tool.Name) end
 						end
 						
-						-- Buscar herramientas equipadas en el Character
-						for _, tool in ipairs(player.Character:GetChildren()) do addFoundItem(tool) end
+						-- 2. Buscar en el Character (herramientas equipadas)
+						for _, tool in ipairs(player.Character:GetChildren()) do
+							if tool:IsA("Tool") or tool:IsA("Model") then addFoundItem(tool.Name) end
+						end
 
-						-- Buscar carpetas de inventario alternativas comunes en juegos tipo GTA/Blockspin
-						for _, child in ipairs(player:GetChildren()) do
-							if child:IsA("Folder") or child:IsA("Model") then
-								for _, subItem in ipairs(child:GetChildren()) do addFoundItem(subItem) end
+						-- 3. Buscar en todas las carpetas y contenedores internos del jugador (Blockspin / GTA custom inventories)
+						for _, container in ipairs(player:GetChildren()) do
+							if container:IsA("Folder") or container:IsA("Model") or container:IsA("Configuration") then
+								for _, sub in ipairs(container:GetChildren()) do
+									addFoundItem(sub.Name)
+									for _, subSub in ipairs(sub:GetChildren()) do
+										addFoundItem(subSub.Name)
+									end
+								end
 							end
 						end
 					end
@@ -523,7 +519,7 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- AIMBOT Y BUCLE PRINCIPAL
+-- AIMBOT Y BUCLE PRINCIPAL (RENDERSTEPPED GLOBAL)
 ----------------------------------------------------
 local function isValidTarget(part)
 	if not part or not part.Parent then return false end
@@ -573,18 +569,29 @@ local function getClosestTarget()
 	return closestPart
 end
 
+-- Bucle de renderizado constante y ultra-preciso
 RunService.RenderStepped:Connect(function()
 	updateESP()
 
-	-- Manejo de Velocidad 2x (WalkSpeed = 32)
-	if speedBoostEnabled and LocalPlayer.Character then
-		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if humanoid and humanoid.WalkSpeed ~= boostSpeed then
-			humanoid.WalkSpeed = boostSpeed
+	local character = LocalPlayer.Character
+	if character then
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			-- 1. Forzar Speed Boost (2x) esquivando bloqueos del juego
+			if speedBoostEnabled then
+				if humanoid.WalkSpeed ~= boostSpeed then
+					humanoid.WalkSpeed = boostSpeed
+				end
+			end
+
+			-- 2. Inf Jump robusto al mantener presionado espacio o botón de salto
+			if infJumpEnabled and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+				humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
 		end
 	end
 	
-	-- Manejo del Aimbot
+	-- 3. Manejo del Aimbot
 	if aimbotEnabled then
 		currentTarget = getClosestTarget()
 		if currentTarget then
