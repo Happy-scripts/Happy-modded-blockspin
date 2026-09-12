@@ -15,7 +15,7 @@ local viewHealthEnabled = false
 local hitboxEnabled = false
 
 local fovRadius = 100
-local hitboxSize = 10 -- Extensible hasta 60
+local hitboxSize = 10
 
 local dragging = false
 local dragInput, dragStart, startPos
@@ -316,7 +316,7 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
--- Slider Hitbox (Escala ampliada hasta 60)
+-- Slider Hitbox
 local HitboxSliderFrame = Instance.new("Frame")
 HitboxSliderFrame.Size = UDim2.new(0.9, 0, 0, 42)
 HitboxSliderFrame.Position = UDim2.new(0.05, 0, 0.36, 0)
@@ -507,25 +507,27 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
--- SISTEMA Y LÓGICA HITBOX EXPANDER CORREGIDO
+-- HITBOX EXPANDER (AZUL TRANSPARENTE + REGISTRO DE BALAS)
 ----------------------------------------------------
 local function applyHitboxToPlayer(plr)
 	if plr == LocalPlayer or not plr.Character then return end
 	
-	local targetPart = plr.Character:FindFirstChild("HumanoidRootPart") 
-		or plr.Character:FindFirstChild("Torso") 
-		or plr.Character:FindFirstChild("UpperTorso")
-		
+	local targetPart = plr.Character:FindFirstChild("HumanoidRootPart")
+	
 	if targetPart then
 		if hitboxEnabled then
 			targetPart.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-			targetPart.Transparency = 0.6
+			targetPart.Transparency = 0.7
 			targetPart.Color = Color3.fromRGB(0, 170, 255)
-			targetPart.Material = Enum.Material.ForceField
-			targetPart.CanCollide = false
+			targetPart.Material = Enum.Material.SmoothPlastic
+			
+			targetPart.CanCollide = false  -- Para no trancarse al caminar
+			targetPart.CanTouch = true     -- Para que detecte proyectiles/balas
+			targetPart.CanQuery = true     -- Para que las armas Raycast (hitscan) registren el disparo
 		else
 			targetPart.Size = Vector3.new(2, 2, 1)
 			targetPart.Transparency = 1
+			targetPart.CanCollide = false
 		end
 	end
 end
@@ -541,7 +543,7 @@ HitboxBtn.MouseButton1Click:Connect(function()
 end)
 
 ----------------------------------------------------
--- LISTA DE JUGADORES Y FIJAR / DESFIJAR CORREGIDO
+-- LISTA DE JUGADORES (FIJAR Y DESFIJAR TOTALMENTE FUNCIONAL)
 ----------------------------------------------------
 local updatePlayerList
 
@@ -621,7 +623,6 @@ updatePlayerList = function()
 				updatePlayerList()
 			end)
 
-			-- BOTÓN DE FIJAR / DESFIJAR RESTRUCTURADO
 			local isFixed = (fixedTarget == plr)
 			local fBtn = Instance.new("TextButton")
 			fBtn.Size = UDim2.new(0.2, 0, 0.8, 0)
@@ -846,7 +847,7 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- CONTROL DE CÁMARA Y BUCLE
+-- BUCLE DE RENDER
 ----------------------------------------------------
 local function isVisible(targetPart)
 	local origin = Camera.CFrame.Position
