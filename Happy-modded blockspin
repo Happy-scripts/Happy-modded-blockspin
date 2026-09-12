@@ -17,11 +17,13 @@ local fovRadius = 100
 local dragging = false
 local dragInput, dragStart, startPos
 
--- Tablas y Variables Aimbot / Espectear
+-- Tablas y Variables Aimbot / Espectear / Anti-Hack
 local currentTarget = nil
 local fixedTarget = nil
 local aliasedPlayers = {}
 local spectatingPlayer = nil
+local lastPositions = {}
+local lastTimes = {}
 
 -- 1. Crear Gui Principal
 local ScreenGui = Instance.new("ScreenGui")
@@ -560,9 +562,42 @@ Players.PlayerRemoving:Connect(function(plr)
 		Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 	end
 	aliasedPlayers[plr.UserId] = nil
+	lastPositions[plr] = nil
+	lastTimes[plr] = nil
 	updatePlayerList()
 end)
 updatePlayerList()
+
+----------------------------------------------------
+-- DETECTOR DE JUGADORES SOSPECHOSOS (SPEED / FLY)
+----------------------------------------------------
+local function checkHackerStatus(player)
+	if not player.Character or player == LocalPlayer then return false end
+	
+	local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+	local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+	if not hrp or not humanoid or humanoid.Health <= 0 then return false end
+
+	local currentTime = tick()
+	local deltaTime = currentTime - (lastTimes[player] or currentTime)
+	local currentPos = hrp.Position
+	local lastPos = lastPositions[player] or currentPos
+
+	lastPositions[player] = currentPos
+	lastTimes[player] = currentTime
+
+	if deltaTime <= 0 then return false end
+
+	local horizontalDistance = (Vector3.new(currentPos.X, 0, currentPos.Z) - Vector3.new(lastPos.X, 0, lastPos.Z)).Magnitude
+	local realSpeed = horizontalDistance / deltaTime
+	local verticalVelocity = math.abs(hrp.AssemblyLinearVelocity.Y)
+
+	if realSpeed > 42 or (verticalVelocity > 80 and not hrp:FindFirstChildOfClass("BodyVelocity")) then
+		return true
+	end
+
+	return false
+end
 
 ----------------------------------------------------
 -- SISTEMA ESP
@@ -593,6 +628,19 @@ local function getPlayerESP(player)
 		nameLabel.Font = Enum.Font.SourceSansBold
 		nameLabel.Visible = false
 		nameLabel.Parent = bGui
+
+		local hackerLabel = Instance.new("TextLabel")
+		hackerLabel.Name = "HackerLabel"
+		hackerLabel.Size = UDim2.new(1, 0, 0, 16)
+		hackerLabel.Position = UDim2.new(0, 0, 0, -18)
+		hackerLabel.BackgroundTransparency = 1
+		hackerLabel.Text = "⚠️ POSIBLE HACKER ⚠️"
+		hackerLabel.TextColor3 = Color3.fromRGB(255, 30, 30)
+		hackerLabel.TextStrokeTransparency = 0
+		hackerLabel.TextSize = 12
+		hackerLabel.Font = Enum.Font.SourceSansBold
+		hackerLabel.Visible = false
+		hackerLabel.Parent = bGui
 
 		local healthBg = Instance.new("Frame")
 		healthBg.Name = "HealthBg"
@@ -663,6 +711,10 @@ local function updateESP()
 			if bGui then
 				local nameLabel = bGui:FindFirstChild("NameLabel")
 				if nameLabel then nameLabel.Visible = viewNamesEnabled end
+
+				local isSuspicious = checkHackerStatus(player)
+				local hackerLabel = bGui:FindFirstChild("HackerLabel")
+				if hackerLabel then hackerLabel.Visible = isSuspicious end
 
 				local healthBg = bGui:FindFirstChild("HealthBg")
 				if healthBg then
