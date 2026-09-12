@@ -15,7 +15,7 @@ local viewHealthEnabled = false
 local hitboxEnabled = false
 
 local fovRadius = 100
-local hitboxSize = 5 -- Tamaño base por defecto
+local hitboxSize = 10 -- Rango expandido hasta 60 (doble del jugador)
 
 local dragging = false
 local dragInput, dragStart, startPos
@@ -27,7 +27,6 @@ local aliasedPlayers = {}
 local spectatingPlayer = nil
 local lastPositions = {}
 local lastTimes = {}
-local originalSizes = {}
 
 -- 1. Crear Gui Principal
 local ScreenGui = Instance.new("ScreenGui")
@@ -317,7 +316,7 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
--- Slider Hitbox
+-- Slider Hitbox (Escala ampliada hasta 60)
 local HitboxSliderFrame = Instance.new("Frame")
 HitboxSliderFrame.Size = UDim2.new(0.9, 0, 0, 42)
 HitboxSliderFrame.Position = UDim2.new(0.05, 0, 0.36, 0)
@@ -332,7 +331,7 @@ UICornerHitSlider.Parent = HitboxSliderFrame
 local HitboxLabel = Instance.new("TextLabel")
 HitboxLabel.Size = UDim2.new(1, 0, 0, 16)
 HitboxLabel.BackgroundTransparency = 1
-HitboxLabel.Text = "Tamaño Hitbox: 5"
+HitboxLabel.Text = "Tamaño Hitbox: 10"
 HitboxLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 HitboxLabel.TextSize = 12
 HitboxLabel.Font = Enum.Font.SourceSansBold
@@ -352,7 +351,7 @@ UICornerHitLine.Parent = HitSliderLine
 local HitSliderKnob = Instance.new("TextButton")
 HitSliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
 HitSliderKnob.Size = UDim2.new(0, 20, 0, 20)
-HitSliderKnob.Position = UDim2.new(0.1, 0, 0.5, 0)
+HitSliderKnob.Position = UDim2.new(0.15, 0, 0.5, 0)
 HitSliderKnob.BackgroundColor3 = Color3.fromRGB(0, 220, 255)
 HitSliderKnob.Text = ""
 HitSliderKnob.Parent = HitSliderLine
@@ -479,14 +478,14 @@ SliderKnob.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSlider = true end
 end)
 
--- Slider Hitbox Eventos
+-- Slider Hitbox Eventos (Escala de 2 a 60 studs)
 local draggingHitSlider = false
 local function updateHitSlider(input)
 	local sliderX = HitSliderLine.AbsolutePosition.X
 	local sliderWidth = HitSliderLine.AbsoluteSize.X
 	local percentage = math.clamp((input.Position.X - sliderX) / sliderWidth, 0, 1)
 	HitSliderKnob.Position = UDim2.new(percentage, 0, 0.5, 0)
-	hitboxSize = math.floor(2 + (percentage * 28)) -- De 2 a 30 de tamaño
+	hitboxSize = math.floor(2 + (percentage * 58))
 	HitboxLabel.Text = "Tamaño Hitbox: " .. tostring(hitboxSize)
 end
 
@@ -509,27 +508,25 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
--- SISTEMA Y LÓGICA HITBOX EXPANDER
+-- SISTEMA Y LÓGICA HITBOX EXPANDER MEJORADA
 ----------------------------------------------------
 local function applyHitboxToPlayer(plr)
 	if plr == LocalPlayer or not plr.Character then return end
-	local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-	if hrp then
-		if not originalSizes[plr] then
-			originalSizes[plr] = hrp.Size
-		end
-
+	
+	local targetPart = plr.Character:FindFirstChild("HumanoidRootPart") 
+		or plr.Character:FindFirstChild("Torso") 
+		or plr.Character:FindFirstChild("UpperTorso")
+		
+	if targetPart then
 		if hitboxEnabled then
-			hrp.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-			hrp.Transparency = 0.7
-			hrp.Color = Color3.fromRGB(0, 170, 255)
-			hrp.Material = Enum.Material.ForceField
-			hrp.CanCollide = false
+			targetPart.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+			targetPart.Transparency = 0.6
+			targetPart.Color = Color3.fromRGB(0, 170, 255)
+			targetPart.Material = Enum.Material.ForceField
+			targetPart.CanCollide = false
 		else
-			if originalSizes[plr] then
-				hrp.Size = originalSizes[plr]
-			end
-			hrp.Transparency = 1
+			targetPart.Size = Vector3.new(2, 2, 1)
+			targetPart.Transparency = 1
 		end
 	end
 end
@@ -654,7 +651,6 @@ Players.PlayerRemoving:Connect(function(plr)
 		Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 	end
 	aliasedPlayers[plr.UserId] = nil
-	originalSizes[plr] = nil
 	updatePlayerList()
 end)
 updatePlayerList()
