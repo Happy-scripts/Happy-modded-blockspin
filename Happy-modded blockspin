@@ -34,72 +34,7 @@ ScreenGui.Name = "BlockspinGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 2. PANTALLA DE CARGA (7 SEGUNDOS)
-local LoadingFrame = Instance.new("Frame")
-LoadingFrame.Name = "LoadingFrame"
-LoadingFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-LoadingFrame.Size = UDim2.new(0, 320, 0, 180)
-LoadingFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-LoadingFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-LoadingFrame.BorderSizePixel = 0
-LoadingFrame.Parent = ScreenGui
-
-local UICornerLoading = Instance.new("UICorner")
-UICornerLoading.CornerRadius = UDim.new(0, 12)
-UICornerLoading.Parent = LoadingFrame
-
-local LoadingTitle = Instance.new("TextLabel")
-LoadingTitle.Size = UDim2.new(1, 0, 0, 45)
-LoadingTitle.Position = UDim2.new(0, 0, 0, 15)
-LoadingTitle.BackgroundTransparency = 1
-LoadingTitle.Text = "⚡ HAPPY-MODDED ⚡"
-LoadingTitle.TextColor3 = Color3.fromRGB(255, 220, 0)
-LoadingTitle.TextSize = 18
-LoadingTitle.Font = Enum.Font.SourceSansBold
-LoadingTitle.Parent = LoadingFrame
-
-local LoadingSubTitle = Instance.new("TextLabel")
-LoadingSubTitle.Size = UDim2.new(1, 0, 0, 25)
-LoadingSubTitle.Position = UDim2.new(0, 0, 0, 55)
-LoadingSubTitle.BackgroundTransparency = 1
-LoadingSubTitle.Text = "Cargando script para Blockspin..."
-LoadingSubTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
-LoadingSubTitle.TextSize = 13
-LoadingSubTitle.Font = Enum.Font.SourceSans
-LoadingSubTitle.Parent = LoadingFrame
-
-local BarBg = Instance.new("Frame")
-BarBg.Size = UDim2.new(0.85, 0, 0, 12)
-BarBg.Position = UDim2.new(0.075, 0, 0.6, 0)
-BarBg.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-BarBg.BorderSizePixel = 0
-BarBg.Parent = LoadingFrame
-
-local UICornerBarBg = Instance.new("UICorner")
-UICornerBarBg.CornerRadius = UDim.new(1, 0)
-UICornerBarBg.Parent = BarBg
-
-local BarFill = Instance.new("Frame")
-BarFill.Size = UDim2.new(0, 0, 1, 0)
-BarFill.BackgroundColor3 = Color3.fromRGB(255, 220, 0)
-BarFill.BorderSizePixel = 0
-BarFill.Parent = BarBg
-
-local UICornerBarFill = Instance.new("UICorner")
-UICornerBarFill.CornerRadius = UDim.new(1, 0)
-UICornerBarFill.Parent = BarFill
-
-local PercentLabel = Instance.new("TextLabel")
-PercentLabel.Size = UDim2.new(1, 0, 0, 20)
-PercentLabel.Position = UDim2.new(0, 0, 0.78, 0)
-PercentLabel.BackgroundTransparency = 1
-PercentLabel.Text = "0%"
-PercentLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-PercentLabel.TextSize = 12
-PercentLabel.Font = Enum.Font.SourceSansBold
-PercentLabel.Parent = LoadingFrame
-
--- 3. Círculo FOV
+-- 2. Círculo FOV
 local FOVCircle = Instance.new("Frame")
 FOVCircle.Name = "FOVCircle"
 FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -121,7 +56,7 @@ FOVStroke.Thickness = 2
 FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 FOVStroke.Parent = FOVCircle
 
--- 4. Barra Flotante Principal
+-- 3. Barra Flotante Principal (Visible desde el inicio)
 local MainBar = Instance.new("Frame")
 MainBar.Name = "MainBar"
 MainBar.Size = UDim2.new(0, 390, 0, 35)
@@ -130,7 +65,7 @@ MainBar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MainBar.BackgroundTransparency = 0.2
 MainBar.BorderSizePixel = 0
 MainBar.Active = true
-MainBar.Visible = false
+MainBar.Visible = true
 MainBar.Parent = ScreenGui
 
 local UICornerBar = Instance.new("UICorner")
@@ -169,7 +104,7 @@ OpenMenuBtn.TextSize = 13
 OpenMenuBtn.Font = Enum.Font.SourceSansBold
 OpenMenuBtn.Parent = MainBar
 
--- 5. Menú Desplegable
+-- 4. Menú Desplegable
 local MenuFrame = Instance.new("Frame")
 MenuFrame.Name = "MenuFrame"
 MenuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -382,22 +317,6 @@ local ViewPlayersBtn = createMenuButton(EspectearPage, "ViewPlayersButton", "VIE
 local ViewNamesBtn = createMenuButton(EspectearPage, "ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.16)
 local ViewHealthBtn = createMenuButton(EspectearPage, "ViewHealthButton", "VIEW HEALTH ❤️: OFF", 0.27)
 ----------------------------------------------------
--- ANIMACIÓN PANTALLA DE CARGA (7 SEGUNDOS)
-----------------------------------------------------
-task.spawn(function()
-	local duration = 7
-	local steps = 100
-	for i = 1, steps do
-		task.wait(duration / steps)
-		BarFill.Size = UDim2.new(i / steps, 0, 1, 0)
-		PercentLabel.Text = tostring(i) .. "%"
-	end
-	
-	LoadingFrame:Destroy()
-	MainBar.Visible = true
-end)
-
-----------------------------------------------------
 -- CONTROL DE PESTAÑAS Y EVENTOS UI
 ----------------------------------------------------
 TabAimbotBtn.MouseButton1Click:Connect(function()
@@ -521,9 +440,9 @@ local function applyHitboxToPlayer(plr)
 			targetPart.Color = Color3.fromRGB(0, 170, 255)
 			targetPart.Material = Enum.Material.SmoothPlastic
 			
-			targetPart.CanCollide = false  -- Para no trancarse al caminar
-			targetPart.CanTouch = true     -- Para que detecte proyectiles/balas
-			targetPart.CanQuery = true     -- Para que las armas Raycast (hitscan) registren el disparo
+			targetPart.CanCollide = false
+			targetPart.CanTouch = true
+			targetPart.CanQuery = true
 		else
 			targetPart.Size = Vector3.new(2, 2, 1)
 			targetPart.Transparency = 1
@@ -543,7 +462,7 @@ HitboxBtn.MouseButton1Click:Connect(function()
 end)
 
 ----------------------------------------------------
--- LISTA DE JUGADORES (FIJAR Y DESFIJAR TOTALMENTE FUNCIONAL)
+-- LISTA DE JUGADORES
 ----------------------------------------------------
 local updatePlayerList
 
