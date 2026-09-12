@@ -15,7 +15,7 @@ local viewHealthEnabled = false
 local hitboxEnabled = false
 
 local fovRadius = 100
-local hitboxSize = 10 -- Rango expandido hasta 60 (doble del jugador)
+local hitboxSize = 10 -- Extensible hasta 60
 
 local dragging = false
 local dragInput, dragStart, startPos
@@ -462,7 +462,7 @@ FOVBtn.MouseButton1Click:Connect(function()
 	FOVBtn.TextColor3 = fovEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
--- Slider FOV Eventos
+-- Sliders
 local draggingSlider = false
 local function updateSlider(input)
 	local sliderX = SliderLine.AbsolutePosition.X
@@ -478,7 +478,6 @@ SliderKnob.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSlider = true end
 end)
 
--- Slider Hitbox Eventos (Escala de 2 a 60 studs)
 local draggingHitSlider = false
 local function updateHitSlider(input)
 	local sliderX = HitSliderLine.AbsolutePosition.X
@@ -508,7 +507,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ----------------------------------------------------
--- SISTEMA Y LÓGICA HITBOX EXPANDER MEJORADA
+-- SISTEMA Y LÓGICA HITBOX EXPANDER CORREGIDO
 ----------------------------------------------------
 local function applyHitboxToPlayer(plr)
 	if plr == LocalPlayer or not plr.Character then return end
@@ -542,9 +541,11 @@ HitboxBtn.MouseButton1Click:Connect(function()
 end)
 
 ----------------------------------------------------
--- LISTA DE JUGADORES Y ACCIONES
+-- LISTA DE JUGADORES Y FIJAR / DESFIJAR CORREGIDO
 ----------------------------------------------------
-local function updatePlayerList()
+local updatePlayerList
+
+updatePlayerList = function()
 	for _, child in ipairs(PlayerListScroll:GetChildren()) do
 		if child:IsA("Frame") then child:Destroy() end
 	end
@@ -589,7 +590,9 @@ local function updatePlayerList()
 			vBtn.MouseButton1Click:Connect(function()
 				if spectatingPlayer == plr then
 					spectatingPlayer = nil
-					Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+					if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+						Camera.CameraSubject = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+					end
 				else
 					spectatingPlayer = plr
 					if plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
@@ -618,11 +621,13 @@ local function updatePlayerList()
 				updatePlayerList()
 			end)
 
+			-- BOTÓN DE FIJAR / DESFIJAR RESTRUCTURADO
+			local isFixed = (fixedTarget == plr)
 			local fBtn = Instance.new("TextButton")
 			fBtn.Size = UDim2.new(0.2, 0, 0.8, 0)
 			fBtn.Position = UDim2.new(0.78, 0, 0.1, 0)
-			fBtn.BackgroundColor3 = (fixedTarget == plr) and Color3.fromRGB(180, 0, 255) or Color3.fromRGB(45, 45, 45)
-			fBtn.Text = (fixedTarget == plr) and "Desfijar" or "Fijar"
+			fBtn.BackgroundColor3 = isFixed and Color3.fromRGB(180, 0, 255) or Color3.fromRGB(45, 45, 45)
+			fBtn.Text = isFixed and "Desfijar" or "Fijar"
 			fBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 			fBtn.TextSize = 11
 			fBtn.Font = Enum.Font.SourceSansBold
@@ -633,7 +638,14 @@ local function updatePlayerList()
 			fCorner.Parent = fBtn
 
 			fBtn.MouseButton1Click:Connect(function()
-				fixedTarget = (fixedTarget == plr) and nil or plr
+				if fixedTarget == plr then
+					fixedTarget = nil
+					if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+						Camera.CameraSubject = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+					end
+				else
+					fixedTarget = plr
+				end
 				updatePlayerList()
 			end)
 
@@ -643,20 +655,35 @@ local function updatePlayerList()
 	PlayerListScroll.CanvasSize = UDim2.new(0, 0, 0, yOffset)
 end
 
-Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(function()
+		task.wait(0.5)
+		applyHitboxToPlayer(plr)
+	end)
+	updatePlayerList()
+end)
+
 Players.PlayerRemoving:Connect(function(plr)
-	if fixedTarget == plr then fixedTarget = nil end
+	if fixedTarget == plr then 
+		fixedTarget = nil 
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+			Camera.CameraSubject = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		end
+	end
 	if spectatingPlayer == plr then 
 		spectatingPlayer = nil 
-		Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+			Camera.CameraSubject = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		end
 	end
 	aliasedPlayers[plr.UserId] = nil
 	updatePlayerList()
 end)
+
 updatePlayerList()
 
 ----------------------------------------------------
--- DETECTOR DE JUGADORES SOSPECHOSOS
+-- DETECTOR DE HACKERS Y ESP
 ----------------------------------------------------
 local function checkHackerStatus(player)
 	if not player.Character or player == LocalPlayer then return false end
@@ -684,9 +711,6 @@ local function checkHackerStatus(player)
 	return false
 end
 
-----------------------------------------------------
--- SISTEMA ESP
-----------------------------------------------------
 local function getPlayerESP(player)
 	if not player.Character then return nil end
 	local head = player.Character:FindFirstChild("Head")
