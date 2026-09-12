@@ -12,10 +12,13 @@ local fovEnabled = false
 local viewPlayersEnabled = false
 local viewNamesEnabled = false
 local viewHealthEnabled = false
-local hitboxEnabled = false
+
+-- Ajustes de Jugador (Player Tab)
+local speedEnabled = false
+local speedMultiplier = 35
+local infiniteJumpEnabled = false
 
 local fovRadius = 100
-local hitboxSize = 10
 
 local dragging = false
 local dragInput, dragStart, startPos
@@ -56,7 +59,7 @@ FOVStroke.Thickness = 2
 FOVStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 FOVStroke.Parent = FOVCircle
 
--- 3. Barra Flotante Principal (Visible desde el inicio)
+-- 3. Barra Flotante Principal
 local MainBar = Instance.new("Frame")
 MainBar.Name = "MainBar"
 MainBar.Size = UDim2.new(0, 390, 0, 35)
@@ -142,7 +145,7 @@ TabDivider.Parent = LeftTabFrame
 
 local TabAimbotBtn = Instance.new("TextButton")
 TabAimbotBtn.Size = UDim2.new(0.9, 0, 0, 40)
-TabAimbotBtn.Position = UDim2.new(0.05, 0, 0.08, 0)
+TabAimbotBtn.Position = UDim2.new(0.05, 0, 0.05, 0)
 TabAimbotBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 TabAimbotBtn.Text = "Aimbot 🎯"
 TabAimbotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -154,9 +157,23 @@ local UICornerTab1 = Instance.new("UICorner")
 UICornerTab1.CornerRadius = UDim.new(0, 6)
 UICornerTab1.Parent = TabAimbotBtn
 
+local TabPlayerBtn = Instance.new("TextButton")
+TabPlayerBtn.Size = UDim2.new(0.9, 0, 0, 40)
+TabPlayerBtn.Position = UDim2.new(0.05, 0, 0.17, 0)
+TabPlayerBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+TabPlayerBtn.Text = "Player 🏃"
+TabPlayerBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+TabPlayerBtn.Font = Enum.Font.SourceSansBold
+TabPlayerBtn.TextSize = 14
+TabPlayerBtn.Parent = LeftTabFrame
+
+local UICornerTab2 = Instance.new("UICorner")
+UICornerTab2.CornerRadius = UDim.new(0, 6)
+UICornerTab2.Parent = TabPlayerBtn
+
 local TabEspectearBtn = Instance.new("TextButton")
 TabEspectearBtn.Size = UDim2.new(0.9, 0, 0, 40)
-TabEspectearBtn.Position = UDim2.new(0.05, 0, 0.20, 0)
+TabEspectearBtn.Position = UDim2.new(0.05, 0, 0.29, 0)
 TabEspectearBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 TabEspectearBtn.Text = "Espectear 👁️"
 TabEspectearBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -164,9 +181,9 @@ TabEspectearBtn.Font = Enum.Font.SourceSansBold
 TabEspectearBtn.TextSize = 14
 TabEspectearBtn.Parent = LeftTabFrame
 
-local UICornerTab2 = Instance.new("UICorner")
-UICornerTab2.CornerRadius = UDim.new(0, 6)
-UICornerTab2.Parent = TabEspectearBtn
+local UICornerTab3 = Instance.new("UICorner")
+UICornerTab3.CornerRadius = UDim.new(0, 6)
+UICornerTab3.Parent = TabEspectearBtn
 
 -- Contenedores
 local AimbotPage = Instance.new("Frame")
@@ -175,6 +192,14 @@ AimbotPage.Size = UDim2.new(1, -130, 1, -10)
 AimbotPage.Position = UDim2.new(0, 125, 0, 5)
 AimbotPage.BackgroundTransparency = 1
 AimbotPage.Parent = MenuFrame
+
+local PlayerPage = Instance.new("Frame")
+PlayerPage.Name = "PlayerPage"
+PlayerPage.Size = UDim2.new(1, -130, 1, -10)
+PlayerPage.Position = UDim2.new(0, 125, 0, 5)
+PlayerPage.BackgroundTransparency = 1
+PlayerPage.Visible = false
+PlayerPage.Parent = MenuFrame
 
 local EspectearPage = Instance.new("Frame")
 EspectearPage.Name = "EspectearPage"
@@ -203,14 +228,14 @@ local function createMenuButton(parent, name, text, posY)
 	return btn
 end
 
+-- Botones Aimbot
 local AimbotBtn = createMenuButton(AimbotPage, "AimbotButton", "Aimbot 🎯: OFF", 0.01)
 local FOVBtn = createMenuButton(AimbotPage, "FOVButton", "FOV Circle 🟡: OFF", 0.09)
-local HitboxBtn = createMenuButton(AimbotPage, "HitboxButton", "Hitbox Expander 📦: OFF", 0.17)
 
 -- Slider FOV
 local FOVSliderFrame = Instance.new("Frame")
 FOVSliderFrame.Size = UDim2.new(0.9, 0, 0, 42)
-FOVSliderFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
+FOVSliderFrame.Position = UDim2.new(0.05, 0, 0.18, 0)
 FOVSliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 FOVSliderFrame.BackgroundTransparency = 0.5
 FOVSliderFrame.Parent = AimbotPage
@@ -251,55 +276,11 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
--- Slider Hitbox
-local HitboxSliderFrame = Instance.new("Frame")
-HitboxSliderFrame.Size = UDim2.new(0.9, 0, 0, 42)
-HitboxSliderFrame.Position = UDim2.new(0.05, 0, 0.36, 0)
-HitboxSliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-HitboxSliderFrame.BackgroundTransparency = 0.5
-HitboxSliderFrame.Parent = AimbotPage
-
-local UICornerHitSlider = Instance.new("UICorner")
-UICornerHitSlider.CornerRadius = UDim.new(0, 6)
-UICornerHitSlider.Parent = HitboxSliderFrame
-
-local HitboxLabel = Instance.new("TextLabel")
-HitboxLabel.Size = UDim2.new(1, 0, 0, 16)
-HitboxLabel.BackgroundTransparency = 1
-HitboxLabel.Text = "Tamaño Hitbox: 10"
-HitboxLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-HitboxLabel.TextSize = 12
-HitboxLabel.Font = Enum.Font.SourceSansBold
-HitboxLabel.Parent = HitboxSliderFrame
-
-local HitSliderLine = Instance.new("Frame")
-HitSliderLine.Size = UDim2.new(0.85, 0, 0, 6)
-HitSliderLine.Position = UDim2.new(0.075, 0, 0.65, 0)
-HitSliderLine.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-HitSliderLine.BorderSizePixel = 0
-HitSliderLine.Parent = HitboxSliderFrame
-
-local UICornerHitLine = Instance.new("UICorner")
-UICornerHitLine.CornerRadius = UDim.new(1, 0)
-UICornerHitLine.Parent = HitSliderLine
-
-local HitSliderKnob = Instance.new("TextButton")
-HitSliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
-HitSliderKnob.Size = UDim2.new(0, 20, 0, 20)
-HitSliderKnob.Position = UDim2.new(0.15, 0, 0.5, 0)
-HitSliderKnob.BackgroundColor3 = Color3.fromRGB(0, 220, 255)
-HitSliderKnob.Text = ""
-HitSliderKnob.Parent = HitSliderLine
-
-local UICornerHitKnob = Instance.new("UICorner")
-UICornerHitKnob.CornerRadius = UDim.new(1, 0)
-UICornerHitKnob.Parent = HitSliderKnob
-
 -- Lista Escroleable
 local PlayerListScroll = Instance.new("ScrollingFrame")
 PlayerListScroll.Name = "PlayerListScroll"
-PlayerListScroll.Size = UDim2.new(0.95, 0, 0.50, 0)
-PlayerListScroll.Position = UDim2.new(0.025, 0, 0.48, 0)
+PlayerListScroll.Size = UDim2.new(0.95, 0, 0.62, 0)
+PlayerListScroll.Position = UDim2.new(0.025, 0, 0.35, 0)
 PlayerListScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 PlayerListScroll.BackgroundTransparency = 0.4
 PlayerListScroll.BorderSizePixel = 0
@@ -312,6 +293,10 @@ UIListLayoutScroll.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayoutScroll.Padding = UDim.new(0, 4)
 UIListLayoutScroll.Parent = PlayerListScroll
 
+-- Botones Sección Player 🏃
+local SpeedBtn = createMenuButton(PlayerPage, "SpeedButton", "Speed Hack ⚡: OFF", 0.05)
+local InfiniteJumpBtn = createMenuButton(PlayerPage, "InfiniteJumpButton", "Infinite Jump 🦘: OFF", 0.16)
+
 -- Botones Página Espectear
 local ViewPlayersBtn = createMenuButton(EspectearPage, "ViewPlayersButton", "VIEW PLAYERS 🔴: OFF", 0.05)
 local ViewNamesBtn = createMenuButton(EspectearPage, "ViewNamesButton", "VIEW NAMES 🏷️: OFF", 0.16)
@@ -321,20 +306,38 @@ local ViewHealthBtn = createMenuButton(EspectearPage, "ViewHealthButton", "VIEW 
 ----------------------------------------------------
 TabAimbotBtn.MouseButton1Click:Connect(function()
 	AimbotPage.Visible = true
+	PlayerPage.Visible = false
 	EspectearPage.Visible = false
 	TabAimbotBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 	TabAimbotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TabPlayerBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	TabPlayerBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+	TabEspectearBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	TabEspectearBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+end)
+
+TabPlayerBtn.MouseButton1Click:Connect(function()
+	AimbotPage.Visible = false
+	PlayerPage.Visible = true
+	EspectearPage.Visible = false
+	TabPlayerBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	TabPlayerBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TabAimbotBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	TabAimbotBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
 	TabEspectearBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	TabEspectearBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
 end)
 
 TabEspectearBtn.MouseButton1Click:Connect(function()
 	AimbotPage.Visible = false
+	PlayerPage.Visible = false
 	EspectearPage.Visible = true
 	TabEspectearBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 	TabEspectearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	TabAimbotBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	TabAimbotBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+	TabPlayerBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	TabPlayerBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
 end)
 
 local function updateDrag(input)
@@ -381,7 +384,7 @@ FOVBtn.MouseButton1Click:Connect(function()
 	FOVBtn.TextColor3 = fovEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
--- Sliders
+-- Slider FOV
 local draggingSlider = false
 local function updateSlider(input)
 	local sliderX = SliderLine.AbsolutePosition.X
@@ -397,67 +400,40 @@ SliderKnob.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSlider = true end
 end)
 
-local draggingHitSlider = false
-local function updateHitSlider(input)
-	local sliderX = HitSliderLine.AbsolutePosition.X
-	local sliderWidth = HitSliderLine.AbsoluteSize.X
-	local percentage = math.clamp((input.Position.X - sliderX) / sliderWidth, 0, 1)
-	HitSliderKnob.Position = UDim2.new(percentage, 0, 0.5, 0)
-	hitboxSize = math.floor(2 + (percentage * 58))
-	HitboxLabel.Text = "Tamaño Hitbox: " .. tostring(hitboxSize)
-end
-
-HitSliderKnob.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingHitSlider = true end
-end)
-
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		draggingSlider = false
-		draggingHitSlider = false
 	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		if draggingSlider then updateSlider(input) end
-		if draggingHitSlider then updateHitSlider(input) end
+	if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and draggingSlider then
+		updateSlider(input)
 	end
 end)
 
 ----------------------------------------------------
--- HITBOX EXPANDER (AZUL TRANSPARENTE + REGISTRO DE BALAS)
+-- FUNCIONES PESTAÑA PLAYER 🏃 (SPEED & INFINITE JUMP)
 ----------------------------------------------------
-local function applyHitboxToPlayer(plr)
-	if plr == LocalPlayer or not plr.Character then return end
-	
-	local targetPart = plr.Character:FindFirstChild("HumanoidRootPart")
-	
-	if targetPart then
-		if hitboxEnabled then
-			targetPart.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-			targetPart.Transparency = 0.7
-			targetPart.Color = Color3.fromRGB(0, 170, 255)
-			targetPart.Material = Enum.Material.SmoothPlastic
-			
-			targetPart.CanCollide = false
-			targetPart.CanTouch = true
-			targetPart.CanQuery = true
-		else
-			targetPart.Size = Vector3.new(2, 2, 1)
-			targetPart.Transparency = 1
-			targetPart.CanCollide = false
-		end
-	end
-end
+SpeedBtn.MouseButton1Click:Connect(function()
+	speedEnabled = not speedEnabled
+	SpeedBtn.Text = "Speed Hack ⚡: " .. (speedEnabled and "ON" or "OFF")
+	SpeedBtn.TextColor3 = speedEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+end)
 
-HitboxBtn.MouseButton1Click:Connect(function()
-	hitboxEnabled = not hitboxEnabled
-	HitboxBtn.Text = "Hitbox Expander 📦: " .. (hitboxEnabled and "ON" or "OFF")
-	HitboxBtn.TextColor3 = hitboxEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-	
-	for _, plr in ipairs(Players:GetPlayers()) do
-		applyHitboxToPlayer(plr)
+InfiniteJumpBtn.MouseButton1Click:Connect(function()
+	infiniteJumpEnabled = not infiniteJumpEnabled
+	InfiniteJumpBtn.Text = "Infinite Jump 🦘: " .. (infiniteJumpEnabled and "ON" or "OFF")
+	InfiniteJumpBtn.TextColor3 = infiniteJumpEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+end)
+
+-- Sistema de Salto Infinito
+UserInputService.JumpRequest:Connect(function()
+	if infiniteJumpEnabled and LocalPlayer.Character then
+		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		end
 	end
 end)
 
@@ -576,10 +552,6 @@ updatePlayerList = function()
 end
 
 Players.PlayerAdded:Connect(function(plr)
-	plr.CharacterAdded:Connect(function()
-		task.wait(0.5)
-		applyHitboxToPlayer(plr)
-	end)
 	updatePlayerList()
 end)
 
@@ -735,9 +707,6 @@ end)
 local function updateESP()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player.Character then
-			
-			applyHitboxToPlayer(player)
-
 			local bGui = getPlayerESP(player)
 			if bGui then
 				local nameLabel = bGui:FindFirstChild("NameLabel")
@@ -785,6 +754,16 @@ end
 RunService.RenderStepped:Connect(function()
 	updateESP()
 	
+	-- Manejo de velocidad avanzada para movimiento custom/GTA
+	if speedEnabled and LocalPlayer.Character then
+		local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if hrp and humanoid and humanoid.MoveDirection.Magnitude > 0 then
+			local moveDirection = humanoid.MoveDirection
+			hrp.AssemblyLinearVelocity = Vector3.new(moveDirection.X * speedMultiplier, hrp.AssemblyLinearVelocity.Y, moveDirection.Z * speedMultiplier)
+		end
+	end
+
 	if fixedTarget and fixedTarget.Character then
 		local targetPart = fixedTarget.Character:FindFirstChild("Head") 
 			or fixedTarget.Character:FindFirstChild("HumanoidRootPart")
