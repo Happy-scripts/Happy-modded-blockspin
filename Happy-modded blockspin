@@ -12,18 +12,22 @@ local fovEnabled = false
 local viewPlayersEnabled = false
 local viewNamesEnabled = false
 local viewHealthEnabled = false
+local hitboxEnabled = false
 
 local fovRadius = 100
+local hitboxSize = 5 -- Tamaño base por defecto
+
 local dragging = false
 local dragInput, dragStart, startPos
 
--- Tablas y Variables Aimbot / Espectear / Anti-Hack
+-- Tablas y Variables
 local currentTarget = nil
 local fixedTarget = nil
 local aliasedPlayers = {}
 local spectatingPlayer = nil
 local lastPositions = {}
 local lastTimes = {}
+local originalSizes = {}
 
 -- 1. Crear Gui Principal
 local ScreenGui = Instance.new("ScreenGui")
@@ -65,7 +69,6 @@ LoadingSubTitle.TextSize = 13
 LoadingSubTitle.Font = Enum.Font.SourceSans
 LoadingSubTitle.Parent = LoadingFrame
 
--- Barra de Progreso
 local BarBg = Instance.new("Frame")
 BarBg.Size = UDim2.new(0.85, 0, 0, 12)
 BarBg.Position = UDim2.new(0.075, 0, 0.6, 0)
@@ -171,7 +174,7 @@ OpenMenuBtn.Parent = MainBar
 local MenuFrame = Instance.new("Frame")
 MenuFrame.Name = "MenuFrame"
 MenuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MenuFrame.Size = UDim2.new(0, 520, 0, 380)
+MenuFrame.Size = UDim2.new(0, 520, 0, 420)
 MenuFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MenuFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MenuFrame.BackgroundTransparency = 0.1
@@ -183,7 +186,7 @@ local UICornerMenu = Instance.new("UICorner")
 UICornerMenu.CornerRadius = UDim.new(0, 10)
 UICornerMenu.Parent = MenuFrame
 
--- Panel Izquierdo (Pestañas)
+-- Panel Izquierdo
 local LeftTabFrame = Instance.new("Frame")
 LeftTabFrame.Name = "LeftTabFrame"
 LeftTabFrame.Size = UDim2.new(0, 120, 1, 0)
@@ -205,7 +208,7 @@ TabDivider.Parent = LeftTabFrame
 
 local TabAimbotBtn = Instance.new("TextButton")
 TabAimbotBtn.Size = UDim2.new(0.9, 0, 0, 40)
-TabAimbotBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
+TabAimbotBtn.Position = UDim2.new(0.05, 0, 0.08, 0)
 TabAimbotBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 TabAimbotBtn.Text = "Aimbot 🎯"
 TabAimbotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -219,7 +222,7 @@ UICornerTab1.Parent = TabAimbotBtn
 
 local TabEspectearBtn = Instance.new("TextButton")
 TabEspectearBtn.Size = UDim2.new(0.9, 0, 0, 40)
-TabEspectearBtn.Position = UDim2.new(0.05, 0, 0.23, 0)
+TabEspectearBtn.Position = UDim2.new(0.05, 0, 0.20, 0)
 TabEspectearBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 TabEspectearBtn.Text = "Espectear 👁️"
 TabEspectearBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -231,7 +234,7 @@ local UICornerTab2 = Instance.new("UICorner")
 UICornerTab2.CornerRadius = UDim.new(0, 6)
 UICornerTab2.Parent = TabEspectearBtn
 
--- Contenedores Derecho
+-- Contenedores
 local AimbotPage = Instance.new("Frame")
 AimbotPage.Name = "AimbotPage"
 AimbotPage.Size = UDim2.new(1, -130, 1, -10)
@@ -250,7 +253,7 @@ EspectearPage.Parent = MenuFrame
 local function createMenuButton(parent, name, text, posY)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
-	btn.Size = UDim2.new(0.9, 0, 0, 32)
+	btn.Size = UDim2.new(0.9, 0, 0, 30)
 	btn.Position = UDim2.new(0.05, 0, posY, 0)
 	btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 	btn.Text = text
@@ -266,13 +269,14 @@ local function createMenuButton(parent, name, text, posY)
 	return btn
 end
 
-local AimbotBtn = createMenuButton(AimbotPage, "AimbotButton", "Aimbot 🎯: OFF", 0.02)
-local FOVBtn = createMenuButton(AimbotPage, "FOVButton", "FOV Circle 🟡: OFF", 0.12)
+local AimbotBtn = createMenuButton(AimbotPage, "AimbotButton", "Aimbot 🎯: OFF", 0.01)
+local FOVBtn = createMenuButton(AimbotPage, "FOVButton", "FOV Circle 🟡: OFF", 0.09)
+local HitboxBtn = createMenuButton(AimbotPage, "HitboxButton", "Hitbox Expander 📦: OFF", 0.17)
 
--- Slider FOV Accesible
+-- Slider FOV
 local FOVSliderFrame = Instance.new("Frame")
-FOVSliderFrame.Size = UDim2.new(0.9, 0, 0, 55)
-FOVSliderFrame.Position = UDim2.new(0.05, 0, 0.22, 0)
+FOVSliderFrame.Size = UDim2.new(0.9, 0, 0, 42)
+FOVSliderFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
 FOVSliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 FOVSliderFrame.BackgroundTransparency = 0.5
 FOVSliderFrame.Parent = AimbotPage
@@ -282,16 +286,16 @@ UICornerSlider.CornerRadius = UDim.new(0, 6)
 UICornerSlider.Parent = FOVSliderFrame
 
 local FOVLabel = Instance.new("TextLabel")
-FOVLabel.Size = UDim2.new(1, 0, 0, 20)
+FOVLabel.Size = UDim2.new(1, 0, 0, 16)
 FOVLabel.BackgroundTransparency = 1
 FOVLabel.Text = "Tamaño FOV: 100"
 FOVLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVLabel.TextSize = 13
+FOVLabel.TextSize = 12
 FOVLabel.Font = Enum.Font.SourceSansBold
 FOVLabel.Parent = FOVSliderFrame
 
 local SliderLine = Instance.new("Frame")
-SliderLine.Size = UDim2.new(0.85, 0, 0, 8)
+SliderLine.Size = UDim2.new(0.85, 0, 0, 6)
 SliderLine.Position = UDim2.new(0.075, 0, 0.65, 0)
 SliderLine.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 SliderLine.BorderSizePixel = 0
@@ -303,7 +307,7 @@ UICornerLine.Parent = SliderLine
 
 local SliderKnob = Instance.new("TextButton")
 SliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
-SliderKnob.Size = UDim2.new(0, 24, 0, 24)
+SliderKnob.Size = UDim2.new(0, 20, 0, 20)
 SliderKnob.Position = UDim2.new(0.33, 0, 0.5, 0)
 SliderKnob.BackgroundColor3 = Color3.fromRGB(255, 230, 0)
 SliderKnob.Text = ""
@@ -313,11 +317,55 @@ local UICornerKnob = Instance.new("UICorner")
 UICornerKnob.CornerRadius = UDim.new(1, 0)
 UICornerKnob.Parent = SliderKnob
 
+-- Slider Hitbox
+local HitboxSliderFrame = Instance.new("Frame")
+HitboxSliderFrame.Size = UDim2.new(0.9, 0, 0, 42)
+HitboxSliderFrame.Position = UDim2.new(0.05, 0, 0.36, 0)
+HitboxSliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+HitboxSliderFrame.BackgroundTransparency = 0.5
+HitboxSliderFrame.Parent = AimbotPage
+
+local UICornerHitSlider = Instance.new("UICorner")
+UICornerHitSlider.CornerRadius = UDim.new(0, 6)
+UICornerHitSlider.Parent = HitboxSliderFrame
+
+local HitboxLabel = Instance.new("TextLabel")
+HitboxLabel.Size = UDim2.new(1, 0, 0, 16)
+HitboxLabel.BackgroundTransparency = 1
+HitboxLabel.Text = "Tamaño Hitbox: 5"
+HitboxLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+HitboxLabel.TextSize = 12
+HitboxLabel.Font = Enum.Font.SourceSansBold
+HitboxLabel.Parent = HitboxSliderFrame
+
+local HitSliderLine = Instance.new("Frame")
+HitSliderLine.Size = UDim2.new(0.85, 0, 0, 6)
+HitSliderLine.Position = UDim2.new(0.075, 0, 0.65, 0)
+HitSliderLine.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+HitSliderLine.BorderSizePixel = 0
+HitSliderLine.Parent = HitboxSliderFrame
+
+local UICornerHitLine = Instance.new("UICorner")
+UICornerHitLine.CornerRadius = UDim.new(1, 0)
+UICornerHitLine.Parent = HitSliderLine
+
+local HitSliderKnob = Instance.new("TextButton")
+HitSliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
+HitSliderKnob.Size = UDim2.new(0, 20, 0, 20)
+HitSliderKnob.Position = UDim2.new(0.1, 0, 0.5, 0)
+HitSliderKnob.BackgroundColor3 = Color3.fromRGB(0, 220, 255)
+HitSliderKnob.Text = ""
+HitSliderKnob.Parent = HitSliderLine
+
+local UICornerHitKnob = Instance.new("UICorner")
+UICornerHitKnob.CornerRadius = UDim.new(1, 0)
+UICornerHitKnob.Parent = HitSliderKnob
+
 -- Lista Escroleable
 local PlayerListScroll = Instance.new("ScrollingFrame")
 PlayerListScroll.Name = "PlayerListScroll"
-PlayerListScroll.Size = UDim2.new(0.95, 0, 0.58, 0)
-PlayerListScroll.Position = UDim2.new(0.025, 0, 0.39, 0)
+PlayerListScroll.Size = UDim2.new(0.95, 0, 0.50, 0)
+PlayerListScroll.Position = UDim2.new(0.025, 0, 0.48, 0)
 PlayerListScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 PlayerListScroll.BackgroundTransparency = 0.4
 PlayerListScroll.BorderSizePixel = 0
@@ -415,12 +463,12 @@ FOVBtn.MouseButton1Click:Connect(function()
 	FOVBtn.TextColor3 = fovEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
+-- Slider FOV Eventos
 local draggingSlider = false
 local function updateSlider(input)
 	local sliderX = SliderLine.AbsolutePosition.X
 	local sliderWidth = SliderLine.AbsoluteSize.X
-	local inputX = input.Position.X
-	local percentage = math.clamp((inputX - sliderX) / sliderWidth, 0, 1)
+	local percentage = math.clamp((input.Position.X - sliderX) / sliderWidth, 0, 1)
 	SliderKnob.Position = UDim2.new(percentage, 0, 0.5, 0)
 	fovRadius = math.floor(30 + (percentage * 270))
 	FOVLabel.Text = "Tamaño FOV: " .. tostring(fovRadius)
@@ -428,20 +476,71 @@ local function updateSlider(input)
 end
 
 SliderKnob.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		draggingSlider = true
-	end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSlider = true end
+end)
+
+-- Slider Hitbox Eventos
+local draggingHitSlider = false
+local function updateHitSlider(input)
+	local sliderX = HitSliderLine.AbsolutePosition.X
+	local sliderWidth = HitSliderLine.AbsoluteSize.X
+	local percentage = math.clamp((input.Position.X - sliderX) / sliderWidth, 0, 1)
+	HitSliderKnob.Position = UDim2.new(percentage, 0, 0.5, 0)
+	hitboxSize = math.floor(2 + (percentage * 28)) -- De 2 a 30 de tamaño
+	HitboxLabel.Text = "Tamaño Hitbox: " .. tostring(hitboxSize)
+end
+
+HitSliderKnob.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingHitSlider = true end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		draggingSlider = false
+		draggingHitSlider = false
 	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		updateSlider(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		if draggingSlider then updateSlider(input) end
+		if draggingHitSlider then updateHitSlider(input) end
+	end
+end)
+
+----------------------------------------------------
+-- SISTEMA Y LÓGICA HITBOX EXPANDER
+----------------------------------------------------
+local function applyHitboxToPlayer(plr)
+	if plr == LocalPlayer or not plr.Character then return end
+	local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		if not originalSizes[plr] then
+			originalSizes[plr] = hrp.Size
+		end
+
+		if hitboxEnabled then
+			hrp.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+			hrp.Transparency = 0.7
+			hrp.Color = Color3.fromRGB(0, 170, 255)
+			hrp.Material = Enum.Material.ForceField
+			hrp.CanCollide = false
+		else
+			if originalSizes[plr] then
+				hrp.Size = originalSizes[plr]
+			end
+			hrp.Transparency = 1
+		end
+	end
+end
+
+HitboxBtn.MouseButton1Click:Connect(function()
+	hitboxEnabled = not hitboxEnabled
+	HitboxBtn.Text = "Hitbox Expander 📦: " .. (hitboxEnabled and "ON" or "OFF")
+	HitboxBtn.TextColor3 = hitboxEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+	
+	for _, plr in ipairs(Players:GetPlayers()) do
+		applyHitboxToPlayer(plr)
 	end
 end)
 
@@ -476,7 +575,6 @@ local function updatePlayerList()
 			pLabel.Font = Enum.Font.SourceSansBold
 			pLabel.Parent = row
 
-			-- Botón Ver
 			local vBtn = Instance.new("TextButton")
 			vBtn.Size = UDim2.new(0.18, 0, 0.8, 0)
 			vBtn.Position = UDim2.new(0.38, 0, 0.1, 0)
@@ -504,7 +602,6 @@ local function updatePlayerList()
 				updatePlayerList()
 			end)
 
-			-- Botón Alear
 			local aBtn = Instance.new("TextButton")
 			aBtn.Size = UDim2.new(0.18, 0, 0.8, 0)
 			aBtn.Position = UDim2.new(0.58, 0, 0.1, 0)
@@ -524,7 +621,6 @@ local function updatePlayerList()
 				updatePlayerList()
 			end)
 
-			-- Botón Fijar / Desfijar
 			local fBtn = Instance.new("TextButton")
 			fBtn.Size = UDim2.new(0.2, 0, 0.8, 0)
 			fBtn.Position = UDim2.new(0.78, 0, 0.1, 0)
@@ -540,11 +636,7 @@ local function updatePlayerList()
 			fCorner.Parent = fBtn
 
 			fBtn.MouseButton1Click:Connect(function()
-				if fixedTarget == plr then
-					fixedTarget = nil
-				else
-					fixedTarget = plr
-				end
+				fixedTarget = (fixedTarget == plr) and nil or plr
 				updatePlayerList()
 			end)
 
@@ -562,18 +654,16 @@ Players.PlayerRemoving:Connect(function(plr)
 		Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 	end
 	aliasedPlayers[plr.UserId] = nil
-	lastPositions[plr] = nil
-	lastTimes[plr] = nil
+	originalSizes[plr] = nil
 	updatePlayerList()
 end)
 updatePlayerList()
 
 ----------------------------------------------------
--- DETECTOR DE JUGADORES SOSPECHOSOS (SPEED / FLY)
+-- DETECTOR DE JUGADORES SOSPECHOSOS
 ----------------------------------------------------
 local function checkHackerStatus(player)
 	if not player.Character or player == LocalPlayer then return false end
-	
 	local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 	local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
 	if not hrp or not humanoid or humanoid.Health <= 0 then return false end
@@ -595,7 +685,6 @@ local function checkHackerStatus(player)
 	if realSpeed > 42 or (verticalVelocity > 80 and not hrp:FindFirstChildOfClass("BodyVelocity")) then
 		return true
 	end
-
 	return false
 end
 
@@ -662,8 +751,7 @@ local function getPlayerESP(player)
 end
 
 local function applyHighlight(character)
-	if not character then return end
-	if not character:FindFirstChild("PlayerHighlight") then
+	if character and not character:FindFirstChild("PlayerHighlight") then
 		local highlight = Instance.new("Highlight")
 		highlight.Name = "PlayerHighlight"
 		highlight.FillColor = Color3.fromRGB(255, 0, 0)
@@ -707,6 +795,9 @@ end)
 local function updateESP()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player.Character then
+			
+			applyHitboxToPlayer(player)
+
 			local bGui = getPlayerESP(player)
 			if bGui then
 				local nameLabel = bGui:FindFirstChild("NameLabel")
@@ -735,16 +826,14 @@ local function updateESP()
 end
 
 ----------------------------------------------------
--- CONTROL DE CÁMARA MEJORADO Y AIMBOT EFECTIVO
+-- CONTROL DE CÁMARA Y BUCLE
 ----------------------------------------------------
 local function isVisible(targetPart)
 	local origin = Camera.CFrame.Position
 	local direction = (targetPart.Position - origin)
 	local raycastParams = RaycastParams.new()
 	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-	
-	local ignoreList = {LocalPlayer.Character}
-	raycastParams.FilterDescendantsInstances = ignoreList
+	raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
 
 	local result = Workspace:Raycast(origin, direction, raycastParams)
 	if result and result.Instance then
@@ -756,7 +845,6 @@ end
 RunService.RenderStepped:Connect(function()
 	updateESP()
 	
-	-- Modo Fijado Permanente
 	if fixedTarget and fixedTarget.Character then
 		local targetPart = fixedTarget.Character:FindFirstChild("Head") 
 			or fixedTarget.Character:FindFirstChild("HumanoidRootPart")
@@ -766,7 +854,6 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	-- Aimbot Mejorado
 	if aimbotEnabled then
 		local closestPart = nil
 		local shortestDistance = fovEnabled and fovRadius or math.huge
@@ -776,7 +863,6 @@ RunService.RenderStepped:Connect(function()
 			if player ~= LocalPlayer and player.Character and not aliasedPlayers[player.UserId] then
 				local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
 				if humanoid and humanoid.Health > 0 then
-					
 					local targetPart = player.Character:FindFirstChild("Head") 
 						or player.Character:FindFirstChild("HumanoidRootPart") 
 						or player.Character:FindFirstChild("Torso")
@@ -785,7 +871,6 @@ RunService.RenderStepped:Connect(function()
 						local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
 						if onScreen then
 							local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
-							
 							if distance <= shortestDistance and isVisible(targetPart) then
 								shortestDistance = distance
 								closestPart = targetPart
