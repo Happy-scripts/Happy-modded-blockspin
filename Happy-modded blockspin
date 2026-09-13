@@ -1,4 +1,4 @@
--- HAPPY-MODDED HUB | Block Spin - LÓGICA PARTE 1/2
+-- HAPPY-MODDED HUB | Block Spin - LÓGICA COMPLETA PARTE 1/2
 -- =============================================================
 
 if not game:IsLoaded() then repeat task.wait() until game:IsLoaded() end
@@ -6,7 +6,7 @@ if not (game.PlaceId == 104715542330896 or game.PlaceId == 97556409405464) then 
 
 local function LoadHappyHub()
 
--- Bypasses de Red
+-- Bypasses
 pcall(function()
     local RS = game:GetService("ReplicatedStorage")
     local TransitionModule = require(RS.Modules.Game.UI.TransitionUI)
@@ -23,7 +23,7 @@ end)
 
 pcall(function() if getgenv then getgenv().identifyexecutor = nil end end)
 
--- Servicios y Variables Globale
+-- Servicios Globale
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
@@ -34,7 +34,6 @@ local CurrentCamera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Net = require(ReplicatedStorage.Modules.Core.Net)
-local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
 
 _G.Settings = {
     WalkSpeed = 35, EnableSpeed = false, FlyJump = false,
@@ -78,9 +77,10 @@ end
 local WindUI = safeLoadUrl("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua")
 if not WindUI then return end
 
+-- Corrección de Capa Superior para desplegables (Dropdown Fix)
 local Window = WindUI:CreateWindow({
     Icon = "rbxassetid://74826351036046", Title = "HAPPY-MODDED HUB | Block Spin",
-    Author = "by HAPPY-MODDED", Folder = "happy_modded", Size = UDim2.fromOffset(520, 400),
+    Author = "by HAPPY-MODDED", Folder = "happy_modded", Size = UDim2.fromOffset(540, 420),
     Transparent = true, Theme = "Dark", Resizable = true, SideBarWidth = 160, OpenButton = { Enabled = false }
 })
 
@@ -90,6 +90,7 @@ Window:Tag({ Title = "V3.9 FULL", Color = Color3.fromHex("#00E5FF"), Radius = 13
 if CoreGui:FindFirstChild("HappyHubButton") then CoreGui.HappyHubButton:Destroy() end
 local ScreenGui = Instance.new("ScreenGui", CoreGui)
 ScreenGui.Name = "HappyHubButton"
+ScreenGui.DisplayOrder = 999
 local ImageButton = Instance.new("ImageButton", ScreenGui)
 ImageButton.BackgroundColor3 = Color3.fromRGB(12, 14, 22)
 ImageButton.Position = UDim2.new(0.5, -22, 0, 10)
@@ -119,35 +120,52 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
+-- Obtención en tiempo real para Listas Desplegables
+local function getOnlinePlayers()
+    local list = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(list, p.Name) end
+    end
+    return #list > 0 and list or {"Sin jugadores"}
+end
+
 -- =====================================================
--- 1. GENERAL TAB (LÓGICA REAL)
+-- 1. GENERAL TAB
 -- =====================================================
 local MainTab = Window:Tab({ Title = "GENERAL", Icon = "globe" })
 MainTab:Section({ Title = "Balances & Modifiers" })
-local BankBalance = MainTab:Button({ Title = "🏦 Bank Balance", Desc = "N/A" })
-local HandBalance = MainTab:Button({ Title = "💸 Hand Balance", Desc = "N/A" })
+local BankBalance = MainTab:Button({ Title = "🏦 Bank Balance", Desc = "Cargando..." })
+local HandBalance = MainTab:Button({ Title = "💸 Hand Balance", Desc = "Cargando..." })
 
-permanentLoop(0.5, function()
-    local handMoney = PlayerGui.TopRightHud.Holder.Frame.MoneyTextLabel.Text:match("%$(%d+)") or "0"
-    HandBalance:SetDesc('<b><font color="#00f2ff">$' .. handMoney .. "</font></b>")
-    local bankMoney = "0"
-    for _, v in ipairs(PlayerGui:GetDescendants()) do
-        if v:IsA("TextLabel") and string.find(v.Text, "Bank Balance") then bankMoney = v.Text:match("%$(%d+)") or "0" break end
-    end
-    BankBalance:SetDesc('<b><font color="#00FF00">$' .. bankMoney .. "</font></b>")
+permanentLoop(0.4, function()
+    local handVal = "0"
+    pcall(function() handVal = PlayerGui.TopRightHud.Holder.Frame.MoneyTextLabel.Text:match("%$(%d+)") or "0" end)
+    HandBalance:SetDesc('<b><font color="#00f2ff">$' .. handVal .. "</font></b>")
+    
+    local bankVal = "0"
+    pcall(function()
+        for _, v in ipairs(PlayerGui:GetDescendants()) do
+            if v:IsA("TextLabel") and string.find(v.Text, "Bank Balance") then bankVal = v.Text:match("%$(%d+)") or "0" break end
+        end
+    end)
+    BankBalance:SetDesc('<b><font color="#00FF00">$' .. bankVal .. "</font></b>")
 end)
 
-permanentLoop(0.1, function()
+RunService.RenderStepped:Connect(function()
     if _G.Settings.EnableSpeed and Humanoid then
-        Net.send("set_sprinting_1", true)
         Humanoid.WalkSpeed = _G.Settings.WalkSpeed
     end
-    if _G.Settings.InfStamina then
-        Net.send("stamina_consume", 0)
-    end
 end)
 
-MainTab:Toggle({ Title = "Walk Speed", Flag = "ws_enabled", Value = false, Callback = function(v) _G.Settings.EnableSpeed = v end })
+permanentLoop(0.2, function()
+    if _G.Settings.EnableSpeed then Net.send("set_sprinting_1", true) end
+    if _G.Settings.InfStamina then Net.send("stamina_consume", 0) end
+end)
+
+MainTab:Toggle({ Title = "Walk Speed", Flag = "ws_enabled", Value = false, Callback = function(v)
+    _G.Settings.EnableSpeed = v
+    if not v and Humanoid then Humanoid.WalkSpeed = 16 end
+end })
 MainTab:Slider({ Title = "Speed Value", Flag = "ws_value", Step = 1, Value = { Min = 8, Max = 100, Default = 35 }, Callback = function(v) _G.Settings.WalkSpeed = v end })
 
 MainTab:Toggle({ Title = "Fly Jump", Flag = "flyjump", Value = false, Callback = function(v) _G.Settings.FlyJump = v end })
@@ -156,33 +174,34 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 MainTab:Section({ Title = "SPIN & Stamina System" })
-MainTab:Button({ Title = "🎲 Auto SPIN", Desc = "Ejecutar Spin automático", Callback = function() Net.send("spin_wheel") end })
+MainTab:Button({ Title = "🎲 Auto SPIN", Desc = "Ejecutar Spin directo", Callback = function() Net.send("spin_wheel") end })
 MainTab:Toggle({ Title = "⚡ Infinite Stamina", Flag = "inf_stamina", Value = false, Callback = function(v) _G.Settings.InfStamina = v end })
 
 MainTab:Section({ Title = "Mansion & Utility" })
 permanentLoop(1, function()
     if _G.Settings.AutoMansion then
-        local mansionChest = workspace:FindFirstChild("MansionChest") or workspace:FindFirstChild("MansionReward")
-        if mansionChest and RootPart then
-            Net.get("claim_mansion_reward", mansionChest)
+        for _, item in ipairs(workspace:GetDescendants()) do
+            if item.Name == "MansionChest" or item.Name == "MansionReward" then
+                Net.get("claim_mansion_reward", item)
+            end
         end
     end
 end)
 
 MainTab:Toggle({ Title = "🏠 Auto Recolect Mansion", Flag = "auto_mansion", Value = false, Callback = function(v) _G.Settings.AutoMansion = v end })
-MainTab:Dropdown({ Title = "Blacklist Rarity", Multi = true, Options = { "Common", "Rare", "Epic", "Legendary" }, Callback = function(v) _G.Settings.Blacklist = v end })
+local BlacklistDropdown = MainTab:Dropdown({ Title = "Blacklist Rarity", Multi = true, Options = { "Common", "Rare", "Epic", "Legendary" }, Callback = function(v) _G.Settings.Blacklist = v end })
 
 MainTab:Section({ Title = "Bypasses & Physics" })
 MainTab:Toggle({ Title = "🔒 Anti Lock", Flag = "anti_lock", Value = false, Callback = function(v) _G.Settings.AntiLock = v end })
 MainTab:Toggle({ Title = "💫 Anti Ragdoll", Flag = "anti_ragdoll", Value = false, Callback = function(v) _G.Settings.AntiRagdoll = v end })
 
-permanentLoop(0.05, function()
+RunService.Stepped:Connect(function()
     if _G.Settings.AntiRagdoll and Character then
         local ragdoll = Character:FindFirstChild("Ragdoll") or Character:FindFirstChild("IsRagdolled")
         if ragdoll then ragdoll:Destroy() end
     end
     if _G.Settings.Underground and RootPart then
-        RootPart.CFrame = RootPart.CFrame * CFrame.new(0, _G.Settings.SnapHeight / 10, 0)
+        RootPart.CFrame = RootPart.CFrame * CFrame.new(0, _G.Settings.SnapHeight / 20, 0)
     end
 end)
 
@@ -190,7 +209,7 @@ MainTab:Toggle({ Title = "🕳️ Underground Mode", Flag = "underground", Value
 MainTab:Slider({ Title = "Snap Height", Flag = "snap_height", Step = 1, Value = { Min = -50, Max = 50, Default = -10 }, Callback = function(v) _G.Settings.SnapHeight = v end })
 
 -- =====================================================
--- 2. COMBAT TAB (LÓGICA REAL)
+-- 2. COMBAT TAB
 -- =====================================================
 local CombatTab = Window:Tab({ Title = "COMBAT", Icon = "swords" })
 CombatTab:Section({ Title = "Aimbot & Targeting" })
@@ -199,15 +218,11 @@ CombatTab:Toggle({ Title = "AIM MORE SAFE", Flag = "aim_safe", Value = false, Ca
 CombatTab:Toggle({ Title = "AIM PECHO", Flag = "aim_pecho", Value = false, Callback = function(v) _G.Settings.AimPecho = v end })
 CombatTab:Toggle({ Title = "Show FOV Circle", Flag = "show_fov", Value = true, Callback = function(v) _G.Settings.ShowFOV = v end })
 
-local function getPlayerList()
-    local t = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then table.insert(t, p.Name) end
-    end
-    return t
-end
+local SafeFriendsDropdown = CombatTab:Dropdown({ Title = "Safe Friends (Whitelisting)", Multi = true, Options = getPlayerList(), Callback = function(v) _G.Settings.SafeFriends = v end })
 
-CombatTab:Dropdown({ Title = "Safe Friends (Whitelisting)", Multi = true, Options = getPlayerList(), Callback = function(v) _G.Settings.SafeFriends = v end })
+-- Actualizador de listas desplegables
+Players.PlayerAdded:Connect(function() SafeFriendsDropdown:SetOptions(getPlayerList()) end)
+Players.PlayerRemoving:Connect(function() SafeFriendsDropdown:SetOptions(getPlayerList()) end)
 
 CombatTab:Section({ Title = "Defense & Combat Utilities" })
 CombatTab:Toggle({ Title = "Anti Kill / Downed Protection", Flag = "anti_kill", Value = false, Callback = function(v) _G.Settings.AntiKill = v end })
@@ -215,16 +230,16 @@ CombatTab:Toggle({ Title = "🎭 Auto Mask", Flag = "auto_mask", Value = false, 
 CombatTab:Toggle({ Title = "💉 Auto Health / Medkit", Flag = "auto_health", Value = false, Callback = function(v) _G.Settings.AutoHealth = v end })
 CombatTab:Toggle({ Title = "⚔️ Hit Aura", Flag = "hit_aura", Value = false, Callback = function(v) _G.Settings.HitAura = v end })
 
-permanentLoop(0.3, function()
+permanentLoop(0.2, function()
     if _G.Settings.AutoMask then Net.send("equip_mask") end
-    if _G.Settings.AutoHealth and Humanoid and Humanoid.Health < (Humanoid.MaxHealth * 0.5) then
+    if _G.Settings.AutoHealth and Humanoid and Humanoid.Health < (Humanoid.MaxHealth * 0.6) then
         Net.send("use_medkit")
     end
     if _G.Settings.HitAura and RootPart then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local dist = (p.Character.HumanoidRootPart.Position - RootPart.Position).Magnitude
-                if dist < 12 and not table.find(_G.Settings.SafeFriends, p.Name) then
+                if dist < 14 and not table.find(_G.Settings.SafeFriends, p.Name) then
                     Net.send("melee_swing", p.Character)
                 end
             end
@@ -232,7 +247,7 @@ permanentLoop(0.3, function()
     end
 end)
 -- =====================================================
--- HAPPY-MODDED HUB | Block Spin - LÓGICA PARTE 2/2
+-- HAPPY-MODDED HUB | Block Spin - LÓGICA COMPLETA PARTE 2/2
 -- =====================================================
 
 -- =====================================================
@@ -241,11 +256,12 @@ end)
 local FarmTab = Window:Tab({ Title = "FARM", Icon = "package" })
 FarmTab:Section({ Title = "Minigame Automation" })
 
-permanentLoop(0.1, function()
+permanentLoop(0.05, function()
     if _G.Settings.AutoMinigame then
-        local minigameUI = PlayerGui:FindFirstChild("MinigameUI") or PlayerGui:FindFirstChild("SliderMinigame")
-        if minigameUI then
+        local minigame = PlayerGui:FindFirstChild("MinigameUI") or PlayerGui:FindFirstChild("SliderMinigame")
+        if minigame then
             Net.send("minigame_success")
+            Net.send("slider_minigame_win")
         end
     end
 end)
@@ -269,12 +285,12 @@ ShopTab:Button({ Title = "🛒 BUY AMMO", Callback = function() Net.send("buy_am
 local VehicleTab = Window:Tab({ Title = "VEHICLE", Icon = "car" })
 VehicleTab:Section({ Title = "Vehicle Utilities" })
 
-permanentLoop(0.2, function()
+permanentLoop(0.15, function()
     if _G.Settings.BumpAura and Character then
-        local car = Character:FindFirstChildOfClass("Model") or workspace:FindFirstChild(LocalPlayer.Name .. "_Vehicle")
-        if car and car:FindFirstChild("PrimaryPart") then
-            for _, v in ipairs(workspace:GetChildren()) do
-                if v:IsA("Model") and v ~= car and v:FindFirstChild("HumanoidRootPart") then
+        for _, v in ipairs(workspace:GetChildren()) do
+            if v:IsA("Model") and v ~= Character and v:FindFirstChild("HumanoidRootPart") then
+                local dist = (v.HumanoidRootPart.Position - RootPart.Position).Magnitude
+                if dist < 20 then
                     Net.send("vehicle_bump", v)
                 end
             end
@@ -304,18 +320,25 @@ VisualTab:Section({ Title = "Viewers" })
 VisualTab:Toggle({ Title = "🎒 Inventory Viewer", Flag = "inv_viewer", Value = false, Callback = function(v) _G.Settings.InvViewer = v end })
 VisualTab:Toggle({ Title = "📦 Drop Item Viewer", Flag = "drop_viewer", Value = false, Callback = function(v) _G.Settings.DropViewer = v end })
 
-RunService.Heartbeat:Connect(function()
+RunService.RenderStepped:Connect(function()
     if _G.Settings.GreenESP then
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
-                if not player.Character:FindFirstChild("HappyGreenHL") then
-                    local hl = Instance.new("Highlight", player.Character)
+                local hl = player.Character:FindFirstChild("HappyGreenHL")
+                if not hl then
+                    hl = Instance.new("Highlight", player.Character)
                     hl.Name = "HappyGreenHL"
                     hl.FillColor = Color3.fromRGB(0, 255, 70)
                     hl.OutlineColor = Color3.fromRGB(180, 255, 180)
                     hl.FillTransparency = 0.4
                     hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
                 end
+            end
+        end
+    else
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character and player.Character:FindFirstChild("HappyGreenHL") then
+                player.Character.HappyGreenHL:Destroy()
             end
         end
     end
@@ -346,9 +369,12 @@ local SpectateTab = Window:Tab({ Title = "SPECTATE", Icon = "video" })
 SpectateTab:Section({ Title = "Player Camera Follow" })
 local targetSpec = nil
 
-SpectateTab:Dropdown({ Title = "Select Player", Options = getPlayerList(), Callback = function(v) targetSpec = Players:FindFirstChild(v) end })
+local SpectateDropdown = SpectateTab:Dropdown({ Title = "Select Player", Options = getPlayerList(), Callback = function(v) targetSpec = Players:FindFirstChild(v) end })
+Players.PlayerAdded:Connect(function() SpectateDropdown:SetOptions(getPlayerList()) end)
+Players.PlayerRemoving:Connect(function() SpectateDropdown:SetOptions(getPlayerList()) end)
+
 SpectateTab:Toggle({ Title = "Spectate Player", Flag = "spectate_on", Value = false, Callback = function(v)
-    if v and targetSpec and targetSpec.Character then
+    if v and targetSpec and targetSpec.Character and targetSpec.Character:FindFirstChildOfClass("Humanoid") then
         CurrentCamera.CameraSubject = targetSpec.Character:FindFirstChildOfClass("Humanoid")
     else
         if Humanoid then CurrentCamera.CameraSubject = Humanoid end
@@ -361,7 +387,7 @@ end })
 local ServerTab = Window:Tab({ Title = "SERVER", Icon = "server" })
 ServerTab:Section({ Title = "Server Info & Hopping" })
 
-ServerTab:Button({ Title = "Copy Server JobId", Callback = function() setclipboard(game.JobId) end })
+ServerTab:Button({ Title = "Copy Server JobId", Callback = function() pcall(function() setclipboard(game.JobId) end) end })
 ServerTab:Button({ Title = "Server Hop", Callback = function()
     game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
 end })
@@ -380,13 +406,13 @@ end })
 ConfigTab:Button({ Title = "📂 Load Config", Callback = function()
     pcall(function()
         if isfile("happy_hub_" .. configName .. ".json") then
-            _G.Settings = game:GetService("HttpService"):JSONDecode(readfile("happy_hub_" .. configName .. ".json"))
+            _G.Settings = game:GetService("HttpService"):JSONEncode(readfile("happy_hub_" .. configName .. ".json"))
         end
     end)
 end })
 
 Window:SelectTab(1)
-print("[HAPPY-MODDED] ¡Todos los botones activados y funcionales!")
+print("[HAPPY-MODDED] ¡Todos los módulos y desplegables ajustados y funcionales!")
 end
 
 local success, err = pcall(LoadHappyHub)
