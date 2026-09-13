@@ -421,7 +421,6 @@ MainTab:Button({
         pcall(function()
             local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
-                -- Coordenadas de la Mansión
                 hrp.CFrame = CFrame.new(125.0, 10.0, -350.0)
             end
         end)
@@ -654,11 +653,10 @@ task.spawn(function()
 end)
 
 Window:SelectTab(1)
-print("[HAPPY-MODDED] ¡Cargado en 2 partes correctamente con todos los extras y Mansión!")
+print("[HAPPY-MODDED] ¡Cargado en 2 partes correctamente!")
 end
 
 local success, err = pcall(LoadHappyHub)
 if not success then
     warn("[HAPPY-MODDED Error]: " .. tostring(err))
 end
-
