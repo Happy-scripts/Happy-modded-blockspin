@@ -1,4 +1,4 @@
--- NEBULA HUB | Block Spin - PARTE 1/2
+-- HAPPY-MODDED HUB | Block Spin - PARTE 1/2
 -- Sin sistema de key — carga directa
 -- =============================================================
 
@@ -10,7 +10,7 @@ if not (game.PlaceId == 104715542330896 or game.PlaceId == 97556409405464) then
     return
 end
 
-local function LoadNebulaHub()
+local function LoadHappyHub()
 
 if not game:IsLoaded() then
     repeat task.wait() until game:IsLoaded()
@@ -240,7 +240,7 @@ end
 local WindUI = safeLoadUrl("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua")
 local Icons = safeLoadUrl("https://raw.githubusercontent.com/Footagesus/Icons/main/Main.lua")
 if not WindUI then
-    warn("[NebulaHub] WindUI failed to load")
+    warn("[HAPPY-MODDED] WindUI failed to load")
     return
 end
 if Icons and Icons.SetIconsType then
@@ -250,9 +250,9 @@ end
 local Window = WindUI:CreateWindow({
     Icon = "rbxassetid://74826351036046",
     IconThemed = true,
-    Title = "NEBULA HUB | Block Spin",
-    Author = "by Nebula.lua",
-    Folder = "nebula's",
+    Title = "HAPPY-MODDED HUB | Block Spin",
+    Author = "by HAPPY-MODDED",
+    Folder = "happy_modded",
     Size = UDim2.fromOffset(480, 360),
     MinSize = Vector2.new(400, 300),
     MaxSize = Vector2.new(700, 520),
@@ -273,12 +273,12 @@ Window:Tag({
 })
 
 -- Floating button
-if CoreGui:FindFirstChild("NebulaHubButton") then
-    CoreGui.NebulaHubButton:Destroy()
+if CoreGui:FindFirstChild("HappyHubButton") then
+    CoreGui.HappyHubButton:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "NebulaHubButton"
+ScreenGui.Name = "HappyHubButton"
 ScreenGui.Parent = CoreGui
 ScreenGui.IgnoreGuiInset = true
 
@@ -333,7 +333,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 -- =====================================================
--- NEBULA HUB | Block Spin - PARTE 2/2
+-- HAPPY-MODDED HUB | Block Spin - PARTE 2/2
 -- =====================================================
 
 --====================================================
@@ -410,6 +410,34 @@ MainTab:Slider({
     Callback = function(Value)
         SpeedAmount = Value
         if Humanoid and EnabledSpeed then Humanoid.WalkSpeed = Value end
+    end
+})
+
+MainTab:Section({ Title = "Teleports & Map:" })
+MainTab:Button({
+    Title = "🏰 Teleport to Mansion (Mansión)",
+    Desc = "Ir directo a la zona de la mansión",
+    Callback = function()
+        pcall(function()
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Coordenadas de la Mansión
+                hrp.CFrame = CFrame.new(125.0, 10.0, -350.0)
+            end
+        end)
+    end
+})
+
+MainTab:Button({
+    Title = "🏙️ Teleport to Spawn / Ciudad",
+    Desc = "Volver al punto de reaparición principal",
+    Callback = function()
+        pcall(function()
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.CFrame = CFrame.new(0.0, 5.0, 0.0)
+            end
+        end)
     end
 })
 
@@ -566,7 +594,7 @@ CombatTab:Toggle({
 -- FARM TAB
 --====================================================
 local FarmTab = Window:Tab({ Title = "FARM", Icon = "package" })
-FarmTab:Section({ Title = "Minigames:" })
+FarmTab:Section({ Title = "Minigames & Money:" })
 
 FarmTab:Toggle({
     Title = "Auto Minigame",
@@ -576,6 +604,16 @@ FarmTab:Toggle({
     Value = false,
     Callback = function(Value)
         _G.AutoMinigame = Value
+    end
+})
+
+FarmTab:Button({
+    Title = "💰 Claim Free Rewards / Bonus",
+    Desc = "Forzar recolección de recompensas activas",
+    Callback = function()
+        pcall(function()
+            Net.get("claim_daily_reward")
+        end)
     end
 })
 
@@ -601,9 +639,9 @@ task.spawn(function()
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
                 local char = player.Character
-                if not char:FindFirstChild("NebulaGreenHL") then
+                if not char:FindFirstChild("HappyGreenHL") then
                     local hl = Instance.new("Highlight")
-                    hl.Name = "NebulaGreenHL"
+                    hl.Name = "HappyGreenHL"
                     hl.FillColor = Color3.fromRGB(0, 255, 70)
                     hl.OutlineColor = Color3.fromRGB(180, 255, 180)
                     hl.FillTransparency = 0.4
@@ -616,10 +654,11 @@ task.spawn(function()
 end)
 
 Window:SelectTab(1)
-print("[NebulaHub] ¡Cargado en 2 partes correctamente!")
+print("[HAPPY-MODDED] ¡Cargado en 2 partes correctamente con todos los extras y Mansión!")
 end
 
-local success, err = pcall(LoadNebulaHub)
+local success, err = pcall(LoadHappyHub)
 if not success then
-    warn("[NebulaHub Error]: " .. tostring(err))
+    warn("[HAPPY-MODDED Error]: " .. tostring(err))
 end
+
