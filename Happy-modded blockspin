@@ -40,6 +40,8 @@ local function LoadNebulaHubPart1()
     local PlayerGui = Client:WaitForChild("PlayerGui")
     local Net = require(ReplicatedStorage.Modules.Core.Net)
     local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
+    local RagdollModule = require(ReplicatedStorage.Modules.Game.Ragdoll)
+    local CharModule = require(ReplicatedStorage.Modules.Core.Char)
 
     local Character = Client.Character or Client.CharacterAdded:Wait()
     local Humanoid = Character:WaitForChild("Humanoid")
@@ -165,6 +167,20 @@ local function LoadNebulaHubPart1()
         Callback = function(Value) SpeedAmount = Value if Humanoid and EnabledSpeed then Humanoid.WalkSpeed = Value end end
     })
 
+    -- Pestaña Combat
+    local CombatTab = getgenv().NebulaWindow:Tab({ Title = "COMBAT", Icon = "swords" })
+    CombatTab:Section({ Title = "GUN" })
+    
+    _G.SilentAimEnabled = false
+    _G.SilentAimFOV = 120
+    _G.AimMoreSafeEnabled = false
+    _G.AimPechoEnabled = false
+
+    CombatTab:Toggle({ Title = "Silent Aim", Flag = "silent_aim", Icon = "crosshair", Type = "Checkbox", Value = false, Callback = function(v) _G.SilentAimEnabled = v end })
+    CombatTab:Toggle({ Title = "AIM MORE SAFE", Flag = "aim_more_safe", Icon = "check", Type = "Checkbox", Value = false, Desc = "2 primeros pecho → resto cabeza", Callback = function(v) _G.AimMoreSafeEnabled = v end })
+    CombatTab:Toggle({ Title = "AIM PECHO", Flag = "aim_pecho", Icon = "check", Type = "Checkbox", Value = false, Desc = "Todas las balas al pecho", Callback = function(v) _G.AimPechoEnabled = v end })
+    CombatTab:Slider({ Title = "FOV", Flag = "gun_fov", Step = 1, Value = { Min = 50, Max = 500, Default = 120 }, Callback = function(v) _G.SilentAimFOV = v end })
+
     print("[NebulaHub] Parte 1 cargada con éxito.")
 end
 
@@ -177,113 +193,12 @@ local function LoadNebulaHubPart2()
     local Players = game:GetService("Players")
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local RunService = game:GetService("RunService")
-    local CoreGui = game:GetService("CoreGui")
     local LocalPlayer = Players.LocalPlayer
 
-    -- ====================================================
-    -- COMBAT TAB (Silent Aim & Aim More Safe)
-    -- ====================================================
-    local CombatTab = Window:Tab({ Title = "COMBAT", Icon = "swords" })
-    CombatTab:Section({ Title = "GUN" })
-
-    _G.SilentAimEnabled = false
-    _G.SilentAimFOV = 120
-    _G.AimMoreSafeEnabled = false
-    _G.AimPechoEnabled = false
-    _G.SafeFriendUserIds = {}
-    _G.ShowFOVCircle = true
-
-    CombatTab:Toggle({ Title = "Silent Aim", Flag = "silent_aim", Icon = "crosshair", Type = "Checkbox", Value = false, Callback = function(v) _G.SilentAimEnabled = v end })
-    CombatTab:Toggle({ Title = "AIM MORE SAFE", Flag = "aim_more_safe", Icon = "check", Type = "Checkbox", Value = false, Desc = "2 primeros pecho → resto cabeza", Callback = function(v) _G.AimMoreSafeEnabled = v end })
-    CombatTab:Toggle({ Title = "AIM PECHO", Flag = "aim_pecho", Icon = "check", Type = "Checkbox", Value = false, Desc = "Todas las balas al pecho", Callback = function(v) _G.AimPechoEnabled = v end })
-    CombatTab:Slider({ Title = "FOV", Flag = "gun_fov", Step = 1, Value = { Min = 50, Max = 500, Default = 120 }, Callback = function(v) _G.SilentAimFOV = v end })
-    CombatTab:Toggle({ Title = "Show FOV Circle", Flag = "show_fov", Icon = "circle", Type = "Checkbox", Value = true, Callback = function(v) _G.ShowFOVCircle = v end })
-
-    -- Lógica interna de Silent Aim y Redirección
-    task.spawn(function()
-        local Cam = workspace.CurrentCamera
-        local function closest()
-            local best, short = nil, math.huge
-            local center = Vector2.new(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
-            local FOV = _G.SilentAimFOV or 120
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local hum = p.Character:FindFirstChildOfClass("Humanoid")
-                    if hum and hum.Health > 0 then
-                        local root = p.Character.HumanoidRootPart
-                        local sp, on = Cam:WorldToViewportPoint(root.Position)
-                        if on then
-                            local d = (Vector2.new(sp.X, sp.Y) - center).Magnitude
-                            if d <= FOV and d < short then
-                                short = d
-                                best = p
-                            end
-                        end
-                    end
-                end
-            end
-            return best
-        end
-
-        local function aimPart(char, chest)
-            if not char then return nil end
-            if chest then return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head") end
-            return char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
-        end
-
-        local shotCounts = {}
-        local lastShotTimes = {}
-        local send = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Send")
-        local old
-
-        local safeHook = hookfunction or function(o, n) return o end
-        old = safeHook(send.FireServer, function(self, ...)
-            local args = {...}
-            if _G.SilentAimEnabled and args[2] == "shoot_gun" then
-                local t = closest()
-                if t and t.Character then
-                    local char = t.Character
-                    local hum = char:FindFirstChildOfClass("Humanoid")
-                    local chest = false
-                    if _G.AimPechoEnabled then
-                        chest = true
-                    elseif _G.AimMoreSafeEnabled then
-                        local now = tick()
-                        local uid = t.UserId
-                        if not lastShotTimes[uid] or (now - lastShotTimes[uid]) > 1.0 then
-                            shotCounts[uid] = 0
-                        end
-                        lastShotTimes[uid] = now
-                        shotCounts[uid] = (shotCounts[uid] or 0) + 1
-                        if shotCounts[uid] <= 2 then chest = true end
-                    end
-                    local ap = aimPart(char, chest)
-                    if ap and hum and hum.Health > 0 then
-                        local pos = ap.Position
-                        local muz = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and LocalPlayer.Character.Head.Position) or Cam.CFrame.Position
-                        args[4] = CFrame.lookAt(muz, pos)
-                        args[5] = {
-                            {
-                                {
-                                    Instance = ap,
-                                    Normal = Vector3.new(0, 1, 0),
-                                    Position = pos,
-                                    Material = Enum.Material.Plastic,
-                                    Distance = (pos - muz).Magnitude
-                                }
-                            }
-                        }
-                    end
-                end
-            end
-            return old(self, unpack(args))
-        end)
-    end)
-
-    -- ====================================================
-    -- FARM TAB
-    -- ====================================================
+    -- Pestaña Farm
     local FarmTab = Window:Tab({ Title = "FARM", Icon = "package" })
+    FarmTab:Section({ Title = "Minigames:" })
+    
     local AutoMinigame = false
     local VirtualInputManager = game:GetService("VirtualInputManager")
     local SliderModule
@@ -310,7 +225,6 @@ local function LoadNebulaHubPart2()
         end
     end)
 
-    FarmTab:Section({ Title = "Minigames:" })
     FarmTab:Toggle({
         Title = "Auto Minigame",
         Flag = "auto_minigame",
@@ -321,9 +235,25 @@ local function LoadNebulaHubPart2()
         Callback = function(Value) AutoMinigame = Value end
     })
 
-    -- ====================================================
-    -- VISUAL TAB
-    -- ====================================================
+    -- Pestaña Shop
+    local ShopTab = Window:Tab({ Title = "SHOP", Icon = "shopping-cart" })
+    ShopTab:Section({ Title = "AMMO CRATES" })
+    ShopTab:Button({
+        Title = "📦 Buy Pistol Ammo",
+        Callback = function()
+            pcall(function() Net.get("open_crate", workspace.Map.Tiles.GunShopTile.PatriotWeapons.Interior.Crates["Ammo Crate"].CrateOptions.Pistol, "money") end)
+        end
+    })
+
+    -- Pestaña Vehicle
+    local VehicleTab = Window:Tab({ Title = "VEHICLE", Icon = "car" })
+    VehicleTab:Section({ Title = "VEHICLES" })
+    VehicleTab:Button({
+        Title = "🚗 Car Fly / Speed Fix",
+        Callback = function() end
+    })
+
+    -- Pestaña Visual
     local VisualTab = Window:Tab({ Title = "VISUAL", Icon = "eye" })
     VisualTab:Section({ Title = "Players:" })
 
@@ -363,6 +293,35 @@ local function LoadNebulaHubPart2()
             end
         end)
     end)
+
+    -- Pestaña Misc
+    local MiscTab = Window:Tab({ Title = "MISC", Icon = "circle-ellipsis" })
+    MiscTab:Section({ Title = "Extra Tools" })
+    MiscTab:Button({
+        Title = "🚀 Boost FPS",
+        Callback = function()
+            pcall(function() loadstring(game:HttpGet("https://pastefy.app/Pmu7jqMe/raw"))() end)
+        end
+    })
+
+    -- Pestaña Spectate
+    local SpectateTab = Window:Tab({ Title = "SPECTATE", Icon = "eye" })
+    SpectateTab:Section({ Title = "Spectate Players" })
+
+    -- Pestaña Server
+    local ServerTab = Window:Tab({ Title = "SERVER", Icon = "server" })
+    ServerTab:Section({ Title = "Server Control" })
+    ServerTab:Button({
+        Title = "🔄 Server Hop",
+        Callback = function()
+            local TS = game:GetService("TeleportService")
+            TS:Teleport(game.PlaceId, LocalPlayer)
+        end
+    })
+
+    -- Pestaña Config
+    local ConfigTab = Window:Tab({ Title = "CONFIG", Icon = "settings" })
+    ConfigTab:Section({ Title = "Settings" })
 
     Window:Open()
     print("[NebulaHub] Parte 2 cargada con éxito. ¡Todo listo!")
