@@ -14,53 +14,19 @@ pcall(function()
 end)
 
 pcall(function() if getgenv then getgenv().identifyexecutor = nil end end)
-pcall(function() if getfenv then getfenv().identifyexecutor = nil end end)
 
-local v1, v2 = {}, game.ReplicatedStorage:WaitForChild("Remotes")
-local v3, v4, v5, v6, v7 = {send = v2:WaitForChild("Send"), get = v2:WaitForChild("Get")}, {event = 0, func = 0}, {}, false, {}
-
-function v1.on_connect(f) if v6 then f() else v7[#v7+1] = f end end
-function v1.hook(k, f)
-    if not f then error("Nil hook "..k) end
-    if v6 then v5[k] = f else v1.on_connect(function() v1.hook(k, f) end) return end
-end
-function v1.is_connected(p) return p:GetAttribute("IsConnected") and true or false end
-
-task.wait(0.05)
-function v1.send(p, ...) v4.event = v4.event + 1 v3.send.FireServer(v3.send, v4.event, p, ...) end
-function v1.get(p, ...) v4.func = v4.func + 1 return v3.get.InvokeServer(v3.get, v4.func, p, ...) end
-task.wait(0.05)
-
-local function v29()
-    v3.send.OnClientEvent:Connect(function(p, ...) if v5[p] then v5[p](...) else error("Invalid hook!", 0) end end)
-    v3.get.OnClientInvoke = function(p, ...) if v5[p] then return v5[p](...) end error("Invalid hook!", 0) end
-    pcall(function() for i=1,#v7 do v7[i]() end end)
-end
-
-function v1.initiate() end
-function v1.loaded()
-    v3.get.OnClientInvoke = function(p) if p == "connect" then v6 = true v29() return true end end
-    v1.hook("ping", function() return true end)
-end
-
-local RS, Http, UIS, Plrs, RSrv, Deb, CGui = game:GetService("ReplicatedStorage"), game:GetService("HttpService"), game:GetService("UserInputService"), game:GetService("Players"), game:GetService("RunService"), game:GetService("Debris"), game:GetService("CoreGui")
+local RS, Http, UIS, Plrs, RSrv, CGui = game:GetService("ReplicatedStorage"), game:GetService("HttpService"), game:GetService("UserInputService"), game:GetService("Players"), game:GetService("RunService"), game:GetService("CoreGui")
 local Cam, LP = workspace.CurrentCamera, Plrs.LocalPlayer
-local PGui = LP:WaitForChild("PlayerGui")
 
 local Net = require(RS.Modules.Core.Net)
 local RagdollModule = require(RS.Modules.Game.Ragdoll)
-local Vechine = require(RS.Modules.Game.VehicleSystem.Vehicle)
-local CharModule = require(RS.Modules.Core.Char)
 local SprintModule = require(RS.Modules.Game.Sprint)
 
-local Settings = {}
-local Char, Hum, Root, BPack = LP.Character or LP.CharacterAdded:Wait(), nil, nil, nil
-local function updateChar(c) Char = c Hum = c:WaitForChild("Humanoid") Root = c:WaitForChild("HumanoidRootPart") BPack = LP:WaitForChild("Backpack") end
-updateChar(Char)
-LP.CharacterAdded:Connect(updateChar)
+local Char, Hum, Root = LP.Character or LP.CharacterAdded:Wait(), nil, nil
+local function updateChar(c) Char = c Hum = c:WaitForChild("Humanoid") Root = c:WaitForChild("HumanoidRootPart") end
+updateChar(Char) LP.CharacterAdded:Connect(updateChar)
 
 local function loop(t, f) task.spawn(function() while true do pcall(f) task.wait(t or 0.25) end end) end
-local function getHRP() return LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") end
 
 local function safeLoad(u)
     local ok, res = pcall(function() return game:HttpGet(u) end)
@@ -84,8 +50,7 @@ local drag, dStart, sPos, isOpen = false, nil, nil, true
 Btn.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag, dStart, sPos = true, i.Position, Btn.Position end end)
 UIS.InputChanged:Connect(function(i)
     if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-        local delta = i.Position - dStart
-        Btn.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + delta.X, sPos.Y.Scale, sPos.Y.Offset + delta.Y)
+        local delta = i.Position - dStart Btn.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + delta.X, sPos.Y.Scale, sPos.Y.Offset + delta.Y)
     end
 end)
 UIS.InputEnded:Connect(function(i)
@@ -94,6 +59,7 @@ UIS.InputEnded:Connect(function(i)
     end
 end)
 
+-- PESTAÑA: GENERAL
 local Main = Window:Tab({ Title = "GENERAL", Icon = "globe" })
 local SpeedAmount, EnabledSpeed = 35, false
 
@@ -105,17 +71,12 @@ loop(0.25, function()
     end
 end)
 
-Main:Toggle({ Title = "Walk Speed", Callback = function(v)
-    EnabledSpeed = v
-    if not v and Hum then Hum:SetAttribute("TargetWalkSpeed", nil) Hum.WalkSpeed = 16 Net.send("set_sprinting_1", false) end
-end })
+Main:Toggle({ Title = "Walk Speed", Callback = function(v) EnabledSpeed = v if not v and Hum then Hum.WalkSpeed = 16 Net.send("set_sprinting_1", false) end end })
 Main:Slider({ Title = "Speed Value", Step = 1, Value = { Min = 8, Max = 45, Default = 35 }, Callback = function(v) SpeedAmount = v end })
 
 local FlyJump = false
 Main:Toggle({ Title = "Fly Jump", Callback = function(v) FlyJump = v end })
-UIS.JumpRequest:Connect(function()
-    if FlyJump and Root then Root.AssemblyLinearVelocity = Vector3.new(Root.AssemblyLinearVelocity.X, 55, Root.AssemblyLinearVelocity.Z) end
-end)
+UIS.JumpRequest:Connect(function() if FlyJump and Root then Root.AssemblyLinearVelocity = Vector3.new(Root.AssemblyLinearVelocity.X, 55, Root.AssemblyLinearVelocity.Z) end end)
 
 local Spin, SpinAngle = false, 0
 Main:Toggle({ Title = "SPIN", Callback = function(v)
@@ -128,9 +89,7 @@ Main:Toggle({ Title = "SPIN", Callback = function(v)
                 Root.CFrame = CFrame.new(Root.Position) * CFrame.Angles(0, SpinAngle, 0)
             end
         end)
-    else
-        RSrv:UnbindFromRenderStep("Spin") if Hum then Hum.AutoRotate = true end
-    end
+    else RSrv:UnbindFromRenderStep("Spin") if Hum then Hum.AutoRotate = true end end
 end })
 
 _G.AutoRecolectMansion = false
@@ -138,45 +97,33 @@ Main:Toggle({ Title = "Auto Recolect Mansion", Callback = function(v) _G.AutoRec
 loop(0.18, function()
     if not _G.AutoRecolectMansion then return end
     local df = workspace:FindFirstChild("DroppedItems")
-    if df and Root then
-        for _, it in ipairs(df:GetChildren()) do
-            if it:FindFirstChild("PickUpZone") then
-                Net.get("pickup_dropped_item", it)
-            end
-        end
-    end
+    if df and Root then for _, it in ipairs(df:GetChildren()) do if it:FindFirstChild("PickUpZone") then Net.get("pickup_dropped_item", it) end end end
 end)
 
 _G.AntiLock = false
 Main:Toggle({ Title = "Anti Lock", Callback = function(v) _G.AntiLock = v end })
 RSrv.Heartbeat:Connect(function()
     if _G.AntiLock and Root then
-        local oldV = Root.Velocity
-        local rV = Vector3.new(math.random(-16000,16000), math.random(-16000,16000), math.random(-16000,16000))
-        Root.Velocity = rV Root.AssemblyLinearVelocity = rV
-        RSrv.RenderStepped:Wait()
-        Root.Velocity = oldV
+        local oldV = Root.Velocity local rV = Vector3.new(math.random(-16000,16000), math.random(-16000,16000), math.random(-16000,16000))
+        Root.Velocity = rV Root.AssemblyLinearVelocity = rV RSrv.RenderStepped:Wait() Root.Velocity = oldV
     end
 end)
 
 Main:Toggle({ Title = "Anti Ragdoll", Callback = function(v)
     _G.AntiRagdoll = v
-    if v then loop(0.2, function()
-        if _G.AntiRagdoll and RagdollModule.is_ragdolling.get() then
-            RagdollModule.is_ragdolling.set(false) Net.send("end_ragdoll_early")
-        end
-    end) end
+    if v then loop(0.2, function() if _G.AntiRagdoll and RagdollModule.is_ragdolling.get() then RagdollModule.is_ragdolling.set(false) Net.send("end_ragdoll_early") end end) end
 end })
 
+-- PESTAÑA: COMBAT
 local Combat = Window:Tab({ Title = "COMBAT", Icon = "swords" })
 _G.SilentAimEnabled = false
 Combat:Toggle({ Title = "Silent Aim", Callback = function(v) _G.SilentAimEnabled = v end })
 
-local SendRemote = game.ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Send")
+local SendRemote = RS:WaitForChild("Remotes"):WaitForChild("Send")
 local oldFire = hookfunction(SendRemote.FireServer, function(self, ...)
     local args = {...}
     if _G.SilentAimEnabled and args[2] == "shoot_gun" then
-        local target = nil local short = math.huge
+        local target, short = nil, math.huge
         for _, p in pairs(Plrs:GetPlayers()) do
             if p ~= LP and p.Character and p.Character:FindFirstChild("Head") then
                 local d = (p.Character.HumanoidRootPart.Position - Root.Position).Magnitude
@@ -191,18 +138,16 @@ local oldFire = hookfunction(SendRemote.FireServer, function(self, ...)
     return oldFire(self, unpack(args))
 end)
 
+-- PESTAÑA: FARM
 local Farm = Window:Tab({ Title = "FARM", Icon = "package" })
 Farm:Toggle({ Title = "Auto Minigame", Callback = function(v)
-    if v then
-        loop(0.1, function()
-            local sm = require(RS.Modules.Game.Minigames.SliderMinigame)
-            if sm and sm.enabled and sm.enabled.get() then
-                sm.needle_pos.set(sm.target_pos.get())
-            end
-        end)
-    end
+    if v then loop(0.1, function()
+        local sm = require(RS.Modules.Game.Minigames.SliderMinigame)
+        if sm and sm.enabled and sm.enabled.get() then sm.needle_pos.set(sm.target_pos.get()) end
+    end) end
 end })
 
+-- PESTAÑA: VISUAL
 local Visual = Window:Tab({ Title = "VISUAL", Icon = "eye" })
 Visual:Toggle({ Title = "Green ESP", Callback = function(v)
     for _, p in pairs(Plrs:GetPlayers()) do
@@ -212,3 +157,8 @@ Visual:Toggle({ Title = "Green ESP", Callback = function(v)
         end
     end
 end })
+
+-- PESTAÑA: PLAYER MODS
+local PlayerTab = Window:Tab({ Title = "PLAYER", Icon = "user" })
+PlayerTab:Slider({ Title = "Field of View (FOV)", Step = 1, Value = { Min = 70, Max = 120, Default = 70 }, Callback = function(v) Cam.FieldOfView = v end })
+PlayerTab:Button({ Title = "Reset Camera", Callback = function() Cam.FieldOfView = 70 end })
