@@ -1,4 +1,4 @@
--- NEBULA HUB | Block Spin  - OPTIMIZED + PERMANENT
+-- HAPPY HUB | Block Spin  - OPTIMIZED + PERMANENT
 -- Sin sistema de key — carga directa
 -- Loops a prueba de errores (no se rompen con el tiempo)
 -- Optimizado: menos lag, sin freeze, mismas funciones
@@ -12,7 +12,7 @@ if not (game.PlaceId == 104715542330896 or game.PlaceId == 97556409405464) then
     return
 end
 
-local function LoadNebulaHub()
+local function LoadHappyHub()
 
 if not game:IsLoaded() then
     repeat task.wait() until game:IsLoaded()
