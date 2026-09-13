@@ -1,425 +1,263 @@
 -- =============================================
--- NEBULA HUB | Block Spin — PARTE 1/2
+-- NEBULA HUB — FIXED FOR DELTA EXECUTOR
 -- =============================================
-if not game:IsLoaded() then repeat task.wait(0.05) until game:IsLoaded() end
-
-local function LoadNebulaHub()
-
--- =============================================
--- NETWORK / CONECTION LAYER
--- =============================================
-local v_u_1 = {}
-local v_u_5 = {}
-local v_u_6 = false
-local v_u_7 = {}
-
-function v_u_1.on_connect(p8)
-    if v_u_6 then p8() else v_u_7[#v_u_7 + 1] = p8 end
+repeat task.wait(0.1) until game:IsLoaded()
+if not (game.PlaceId == 104715542330896 or game.PlaceId == 97556409405464) then
+    return print("[NebulaHub] ❌ No es el juego correcto")
 end
 
-function v_u_1.hook(name, func)
-    if not func then error("Function nil for hook "..name) end
-    if v_u_6 then
-        if v_u_5[name] then warn("Overwriting hook: "..name) end
-        v_u_5[name] = func
-    else
-        v_u_1.on_connect(function() v_u_1.hook(name, func) end)
-    end
-end
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Net = require(ReplicatedStorage.Modules.Core.Net)
-local v_u_3 = Net
-
-task.wait(0.05)
-local v_u_20 = v_u_3.send
-local v_u_21 = v_u_3.send.FireServer
-local v_u_4 = { event = 0, func = 0 }
-
-function v_u_1.send(name, ...)
-    v_u_4.event += 1
-    v_u_21(v_u_20, v_u_4.event, name, ...)
-end
-
-local v_u_23 = v_u_3.get
-local v_u_24 = v_u_3.get.InvokeServer
-function v_u_1.get(name, ...)
-    v_u_4.func += 1
-    return v_u_24(v_u_23, v_u_4.func, name, ...)
-end
-
-local function v_u_29()
-    v_u_3.send.OnClientEvent:Connect(function(name, ...)
-        if v_u_5[name] then v_u_5[name](...) end
-    end)
-    function v_u_3.get.OnClientInvoke(name, ...)
-        if v_u_5[name] then return v_u_5[name](...) end
-        error("Invalid hook: "..name)
-    end
-    pcall(function()
-        for i = 1, #v_u_7 do v_u_7[i]() end
-    end)
-end
-
-function v_u_1.loaded()
-    function v_u_3.get.OnClientInvoke(name)
-        if name == "connect" then
-            v_u_6 = true
-            v_u_29()
-            return true
-        end
-    end
-    v_u_1.hook("ping", function() return true end)
-end
-
-print("bypassed")
+print("[NebulaHub] Cargando...")
 
 -- =============================================
--- SERVICES & MODULES
+-- SERVICIOS
 -- =============================================
-local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
+local RS = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
 local CoreGui = game:GetService("CoreGui")
-local CurrentCamera = workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-local Character, Humanoid, RootPart, Backpack
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 15)
+if not PlayerGui then return warn("[NebulaHub] No se encontró PlayerGui") end
 
-local function updateChar()
+local Character, Humanoid, RootPart
+local function updChar()
     Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    Humanoid = Character:WaitForChild("Humanoid")
-    RootPart = Character:WaitForChild("HumanoidRootPart")
-    Backpack = LocalPlayer:WaitForChild("Backpack")
+    Humanoid = Character:WaitForChild("Humanoid", 15)
+    RootPart = Character:WaitForChild("HumanoidRootPart", 15)
 end
-updateChar()
-LocalPlayer.CharacterAdded:Connect(updateChar)
-
-local CharModule = require(ReplicatedStorage.Modules.Core.Char)
-local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
-local RagdollModule = require(ReplicatedStorage.Modules.Game.Ragdoll)
-local Vechine = require(ReplicatedStorage.Modules.Game.VehicleSystem.Vehicle)
+updChar()
+LocalPlayer.CharacterAdded:Connect(updChar)
 
 -- =============================================
--- HELPERS
+-- BYPASS
 -- =============================================
-local function safeCall(fn, ...)
-    local ok, a, b, c = pcall(fn, ...)
-    if ok then return a, b, c end
-end
+pcall(function()
+    if getgenv then getgenv().identifyexecutor = nil end
+    local Trans = require(RS.Modules.Game.UI.TransitionUI)
+    local old = Trans.transition
+    Trans.transition = function(...) return old(...) end
+end)
+pcall(function()
+    local CC = require(RS.Modules.Game.CharacterCreator.CharacterCreator)
+    if CC.start then
+        local old = CC.start
+        CC.start = function(...) return old(...) end
+    end
+end)
 
-local function permanentLoop(interval, fn)
-    task.spawn(function()
-        local t = interval or 0.25
-        while true do pcall(fn) task.wait(t) end
+-- =============================================
+-- CARGAR UI — ESPERA HASTA QUE ESTÉ LISTA
+-- =============================================
+local WindUI = nil
+local intentos = 0
+repeat
+    intentos += 1
+    local ok, res = pcall(function()
+        return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
     end)
-end
+    if ok and res then WindUI = res end
+    if not WindUI then task.wait(0.5) end
+until WindUI or intentos >= 10
 
-local function safeHttpGet(url)
-    local ok, res = pcall(function() return game:HttpGet(url) end)
-    if ok then return res end
-    ok, res = pcall(function() return game:HttpGetAsync(url) end)
-    return ok and res
+if not WindUI then
+    warn("[NebulaHub] ❌ No se pudo cargar WindUI")
+    return
 end
-
-local function safeLoadUrl(url)
-    local src = safeHttpGet(url)
-    if not src then return end
-    local ok, fn = pcall(loadstring, src)
-    if ok and fn then return fn() end
-end
-
-local safeHook = pcall(function() return hookfunction end) or function(old, new) return old end
-local function safeDraw(class)
-    local ok, obj = pcall(function() return Drawing and Drawing.new and Drawing.new(class) end)
-    return ok and obj
-end
+print("[NebulaHub] ✅ WindUI cargado")
 
 -- =============================================
--- LOAD UI LIBRARY
+-- VENTANA
 -- =============================================
-local WindUI = safeLoadUrl("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua")
-if not WindUI then warn("WindUI failed to load") return end
-
-local Icons = safeLoadUrl("https://raw.githubusercontent.com/Footagesus/Icons/main/Main.lua")
-if Icons and Icons.SetIconsType then Icons.SetIconsType("lucide") end
-
 local Window = WindUI:CreateWindow({
     Icon = "rbxassetid://74826351036046",
-    Title = "NEBULA HUB | Block Spin",
-    Author = "by Nebula.lua",
-    Folder = "nebula's",
-    Size = UDim2.fromOffset(480, 360),
-    MinSize = Vector2.new(400, 300),
-    Transparent = true,
+    Title = "NEBULA HUB | DELTA FIX",
+    Author = "Fixed",
+    Folder = "nebula_delta",
+    Size = UDim2.fromOffset(460, 340),
     Theme = "Dark",
+    Transparent = true,
     Resizable = true,
-    SideBarWidth = 165,
-    OpenButton = { Enabled = false }
+    OpenButton = {Enabled = false}
 })
-Window:Tag({ Title = "V0.2", Color = Color3.fromHex("#00E5FF"), Radius = 13 })
+Window:Tag({Title = "DELTA", Color = Color3.fromHex("#00E5FF"), Radius = 12})
 
 -- =============================================
--- FLOATING BUTTON
+-- BOTÓN FLOTANTE
 -- =============================================
-if CoreGui:FindFirstChild("NebulaHubButton") then CoreGui.NebulaHubButton:Destroy() end
-local ScreenGui = Instance.new("ScreenGui", CoreGui)
-ScreenGui.Name = "NebulaHubButton"
-ScreenGui.IgnoreGuiInset = true
+if CoreGui:FindFirstChild("NebulaDeltaBtn") then CoreGui.NebulaDeltaBtn:Destroy() end
+local SG = Instance.new("ScreenGui", CoreGui)
+SG.Name = "NebulaDeltaBtn"
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-local Btn = Instance.new("ImageButton", ScreenGui)
-Btn.BackgroundColor3 = Color3.fromRGB(12, 14, 22)
-Btn.Position = UDim2.new(0.5, -22, 0, 10)
-Btn.Size = UDim2.new(0, 45, 0, 45)
+local Btn = Instance.new("ImageButton", SG)
+Btn.Name = "ToggleBtn"
+Btn.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
+Btn.Position = UDim2.new(0.5, -22, 0, 15)
+Btn.Size = UDim2.new(0, 44, 0, 44)
 Btn.Image = "rbxassetid://74826351036046"
 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 8)
-local stroke = Instance.new("UIStroke", Btn)
-stroke.Color = Color3.fromRGB(0, 229, 255)
-stroke.Thickness = 2.5
+local s = Instance.new("UIStroke", Btn)
+s.Color = Color3.fromRGB(0, 229, 255); s.Thickness = 2
 
-local dragging, startPos, dragPos, isOpen = false, nil, nil, true
-Btn.InputBegan:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragPos = i.Position; startPos = Btn.Position
-    end
+local isOpen = true
+Btn.MouseButton1Click:Connect(function()
+    isOpen = not isOpen
+    if isOpen then Window:Open() else Window:Close() end
 end)
-UserInputService.InputChanged:Connect(function(i)
-    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-        local d = i.Position - dragPos
-        Btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
-    end
-end)
-UserInputService.InputEnded:Connect(function(i)
-    if dragging then
-        dragging = false
-        if math.abs(i.Position.X - dragPos.X) + math.abs(i.Position.Y - dragPos.Y) < 5 then
-            isOpen = not isOpen; isOpen and Window:Open() or Window:Close()
+
+-- =============================================
+-- FUNCIONES AUXILIARES
+-- =============================================
+local function loop(tiempo, fn)
+    task.spawn(function()
+        while task.wait(tiempo) do
+            pcall(fn)
         end
     end
-end)
-
--- =============================================
--- MAIN TAB — PLAYER & MOVEMENT
--- =============================================
-local MainTab = Window:Tab({ Title = "GENERAL", Icon = "globe" })
-MainTab:Section({ Title = "Player" })
-
-local function getHandMoney()
-    return tonumber(PlayerGui:FindFirstChild("TopRightHud", true) and PlayerGui.TopRightHud.Holder.Frame.MoneyTextLabel.Text:match("%$(%d+)")) or 0
 end
-local function getBankMoney()
-    for _, v in ipairs(PlayerGui:GetDescendants()) do
-        if v:IsA("TextLabel") and string.find(v.Text, "Bank Balance") then
-            return tonumber(v.Text:match("%$(%d+)")) or 0
+
+local function getHand()
+    local lbl = PlayerGui:FindFirstChild("TopRightHud", true)
+    if not lbl then return 0 end
+    local txt = lbl.Holder.Frame.MoneyTextLabel.Text
+    return tonumber(txt:match("%d+")) or 0
+end
+
+local function getBank()
+    for _, d in ipairs(PlayerGui:GetDescendants()) do
+        if d:IsA("TextLabel") and d.Text:find("Bank Balance") then
+            return tonumber(d.Text:match("%d+")) or 0
         end
     end
     return 0
 end
 
-local BankBtn = MainTab:Button({ Title = "🏦 Bank Balance", Desc = "—" })
-local HandBtn = MainTab:Button({ Title = "💸 Hand Balance", Desc = "—" })
-permanentLoop(0.6, function()
-    BankBtn:SetDesc('<b><font color="#00FF00">$'..getBankMoney()..'</font></b>')
-    HandBtn:SetDesc('<b><font color="#00f2ff">$'..getHandMoney()..'</font></b>')
+local Net = require(RS.Modules.Core.Net)
+
+-- =============================================
+-- PESTAÑA GENERAL
+-- =============================================
+local Main = Window:Tab({Title = "GENERAL", Icon = "globe"})
+Main:Section({Title = "Dinero"})
+
+local LblBanco = Main:Button({Title = "🏦 Banco", Desc = "Cargando..."})
+local LblMano = Main:Button({Title = "💸 En mano", Desc = "Cargando..."})
+loop(0.8, function()
+    LblBanco:SetDesc("<b>$"..getBank().."</b>")
+    LblMano:SetDesc("<b>$"..getHand().."</b>")
 end)
 
--- Speed
-local speedVal, speedOn = 35, false
-MainTab:Toggle({ Title = "Walk Speed", Flag = "ws", Value = false, Callback = function(v)
-    speedOn = v
+-- Velocidad
+local velocidad = 35, velActiva = false
+Main:Toggle({Title = "Caminar Rápido", Flag = "vel", Value = false, Callback = function(v)
+    velActiva = v
     if not v and Humanoid then Humanoid.WalkSpeed = 16 end
-end })
-MainTab:Slider({ Title = "Speed Value", Flag = "ws_val", Step = 1, Value = { Min = 8, Max = 45, Default = 35 },
-    Callback = function(v) speedVal = v end })
-permanentLoop(0.25, function()
-    if speedOn and Humanoid then
-        Net.send("set_sprinting_1", true)
-        Humanoid.WalkSpeed = speedVal
+end})
+Main:Slider({Title = "Velocidad", Flag = "val_vel", Min = 8, Max = 45, Default = 35, Callback = function(v)
+    velocidad = v
+end})
+loop(0.2, function()
+    if velActiva and Humanoid then
+        pcall(function() Net.send("set_sprinting_1", true) end)
+        Humanoid.WalkSpeed = velocidad
     end
 end)
 
--- Fly Jump
-local flyOn = false
-MainTab:Toggle({ Title = "Fly Jump", Flag = "flyjump", Value = false, Callback = function(v) flyOn = v end })
-UserInputService.JumpRequest:Connect(function()
-    if flyOn and RootPart then
+-- Salto Alto
+local saltoAct = false
+Main:Toggle({Title = "Salto Alto", Flag = "salto", Callback = function(v) saltoAct = v end})
+UIS.JumpRequest:Connect(function()
+    if saltoAct and RootPart then
         local v = RootPart.AssemblyLinearVelocity
-        RootPart.AssemblyLinearVelocity = Vector3.new(v.X, 55, v.Z)
+        RootPart.AssemblyLinearVelocity = Vector3.new(v.X, 50, v.Z)
     end
 end)
 
--- Spin
-local spinOn, spinAngle = false, 0
-local function doSpin(dt)
-    if not spinOn then return end
-    spinAngle += 0.65 * 60 * dt
-    spinAngle %= math.pi*2
-    if RootPart then
-        RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, spinAngle, 0)
-        if Humanoid then Humanoid.AutoRotate = false end
-    end
-end
-MainTab:Toggle({ Title = "SPIN", Flag = "spin", Desc = "Gira sin parar", Callback = function(v)
-    spinOn = v
-    if v then RunService.RenderStepped:Connect(doSpin) end
-end })
+-- Girar
+local girarAct = false, angulo = 0
+RunService.RenderStepped:Connect(function(dt)
+    if not girarAct or not RootPart then return end
+    angulo += 0.7 * 60 * dt
+    angulo %= math.pi*2
+    RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, angulo, 0)
+    if Humanoid then Humanoid.AutoRotate = false end
+end)
+Main:Toggle({Title = "Girar Sin Parar", Flag = "girar", Callback = function(v)
+    girarAct = v
+    if not v then angulo = 0 if Humanoid then Humanoid.AutoRotate = true end end
+end})
 
--- Infinite Stamina
-local infStamina = false
-MainTab:Toggle({ Title = "Infinite Stamina", Flag = "infstam", Callback = function(v) infStamina = v end })
-permanentLoop(0.1, function()
-    if infStamina then Net.send("set_sprinting_1", true) end
+-- Estamina
+local stamAct = false
+Main:Toggle({Title = "Estamina Infinita", Flag = "stam", Callback = function(v) stamAct = v end})
+loop(0.3, function()
+    if stamAct then pcall(function() Net.send("set_sprinting_1", true) end) end
 end)
 
--- Anti Ragdoll
-local antiRagdoll = false
-MainTab:Toggle({ Title = "Anti Ragdoll", Flag = "antird", Callback = function(v) antiRagdoll = v end })
-permanentLoop(0.2, function()
-    if antiRagdoll then
-        pcall(function()
-            if RagdollModule.is_ragdolling.get() then
-                RagdollModule.is_ragdolling.set(false)
-                Net.send("end_ragdoll_early")
-                Net.send("clear_ragdoll")
-            end
-        end)
+-- Anti-Ragdoll
+local ragAct = false
+Main:Toggle({Title = "No Tirarse", Flag = "norag", Callback = function(v) ragAct = v end})
+loop(0.2, function()
+    if not ragAct then return end
+    local RagMod = pcall(function() return require(RS.Modules.Game.Ragdoll) end)
+    if RagMod and RagMod.is_ragdolling then
+        pcall(function() RagMod.is_ragdolling.set(false) end)
     end
 end)
 
--- Underground
-local underOn, underOffset = false, 70
-MainTab:Toggle({ Title = "Underground", Flag = "under", Callback = function(v) underOn = v end })
-MainTab:Slider({ Title = "Snap Height", Flag = "snap", Value = { Min = 1, Max = 100, Default = 70 },
-    Callback = function(v) underOffset = v end })
+-- Bajar debajo del suelo
+local bajoAct = false, prof = 70
+Main:Toggle({Title = "Bajo El Suelo", Flag = "bajo", Callback = function(v) bajoAct = v end})
+Main:Slider({Title = "Profundidad", Flag = "prof", Min = 10, Max = 100, Default = 70, Callback = function(v) prof = v end})
 RunService.Heartbeat:Connect(function()
-    if underOn and RootPart then
-        RootPart.CFrame *= CFrame.new(0, -underOffset/20, 0)
-    end
-end)
--- =============================================
--- NEBULA HUB | Block Spin — PARTE 2/2
--- =============================================
--- CONTINUACIÓN del script anterior
-
--- =============================================
--- COMBAT TAB
--- =============================================
-local CombatTab = Window:Tab({ Title = "COMBAT", Icon = "swords" })
-CombatTab:Section({ Title = "GUN" })
-
-local silentAim, fovVal = false, 120
-local aimPecho, aimSafe = false, false
-local safeFriends = {}
-
-CombatTab:Toggle({ Title = "Silent Aim", Flag = "silent", Callback = function(v) silentAim = v end })
-CombatTab:Toggle({ Title = "AIM PECHO", Flag = "pecho", Callback = function(v) aimPecho = v end })
-CombatTab:Toggle({ Title = "AIM MORE SAFE", Flag = "safemode", Callback = function(v) aimSafe = v end })
-CombatTab:Slider({ Title = "FOV", Flag = "fov", Value = { Min = 50, Max = 500, Default = 120 },
-    Callback = function(v) fovVal = v end })
-
-local function getPlayerList()
-    local t = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then table.insert(t, p.Name) end
-    end
-    return t
-end
-local friendDropdown = CombatTab:Dropdown({ Title = "Safe Friends", Multi = true, Options = getPlayerList(),
-    Callback = function(v)
-        safeFriends = {}
-        for _, n in ipairs(v) do safeFriends[n] = true end
-    end
-})
-Players.PlayerAdded:Connect(function() friendDropdown:SetOptions(getPlayerList()) end)
-Players.PlayerRemoving:Connect(function() friendDropdown:SetOptions(getPlayerList()) end)
-
--- Anti Kill
-local antiKill = false
-CombatTab:Toggle({ Title = "Anti Kill", Flag = "antikill", Callback = function(v) antiKill = v end })
-permanentLoop(0.15, function()
-    if not antiKill then return end
-    local downed = Humanoid and (Humanoid:GetAttribute("IsDowned") or Humanoid:GetAttribute("HasBeenDowned"))
-    if downed and RootPart then
-        RootPart.CFrame = RootPart.CFrame * CFrame.new(0, -50, 0)
-        task.wait(0.5)
-        RootPart.CFrame = RootPart.CFrame * CFrame.new(0, 55, 0)
+    if bajoAct and RootPart then
+        RootPart.CFrame *= CFrame.new(0, -prof/20, 0)
     end
 end)
 
--- Hit Aura
-local hitAura = false
-CombatTab:Toggle({ Title = "Hit Aura", Flag = "hitaura", Callback = function(v) hitAura = v end })
-permanentLoop(0.15, function()
-    if not hitAura or not RootPart then return end
-    local fists = Character:FindFirstChild("Fists")
-    if not fists then return end
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = (p.Character.HumanoidRootPart.Position - RootPart.Position).Magnitude
-            if dist < 20 and not safeFriends[p.Name] then
-                Net.send("melee_attack", fists, {p}, p.Character.HumanoidRootPart.CFrame, 0)
-            end
-        end
-    end
-end)
-
--- =============================================
--- FARM TAB
--- =============================================
-local FarmTab = Window:Tab({ Title = "FARM", Icon = "package" })
-local autoMini = false
-FarmTab:Toggle({ Title = "Auto Minigame", Flag = "automini", Callback = function(v) autoMini = v end })
-permanentLoop(0.1, function()
-    if not autoMini then return end
-    pcall(function()
-        local m = ReplicatedStorage.Modules.Game.Minigames.SliderMinigame
-        if m.enabled and m.enabled.get() then
-            m.needle_pos.set(m.target_pos.get())
-        end
-    end)
-end)
-
--- Auto Recolect Mansion
-local autoRec = false
-FarmTab:Toggle({ Title = "Auto Recolect Mansion", Flag = "autorec", Callback = function(v) autoRec = v end })
-permanentLoop(0.18, function()
-    if not autoRec then return end
-    local dropFolder = workspace:FindFirstChild("DroppedItems")
-    if not dropFolder or not RootPart then return end
-    for _, item in ipairs(dropFolder:GetChildren()) do
+-- Recolectar
+local recAct = false
+Main:Toggle({Title = "Recolectar Todo", Flag = "reco", Callback = function(v) recAct = v end})
+loop(0.3, function()
+    if not recAct or not RootPart then return end
+    local Cajas = workspace:FindFirstChild("DroppedItems")
+    if not Cajas then return end
+    for _, item in ipairs(Cajas:GetChildren()) do
         if item:GetAttribute("Locked") then continue end
-        local part = item:FindFirstChild("PickUpZone") or item:FindFirstChildWhichIsA("BasePart")
-        if part and (part.Position - RootPart.Position).Magnitude < 55 then
-            Net.get("pickup_dropped_item", item)
-            if (part.Position - RootPart.Position).Magnitude > 6 then
-                RootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 2.3, 0))
+        local p = item:FindFirstChild("PickUpZone") or item:FindFirstChildWhichIsA("BasePart", true)
+        if p then
+            local d = (p.Position - RootPart.Position).Magnitude
+            if d < 55 then
+                pcall(function() Net.get("pickup_dropped_item", item) end)
+                if d > 6 then
+                    RootPart.CFrame = CFrame.new(p.Position + Vector3.new(0, 2, 0))
+                end
             end
         end
     end
 end)
 
 -- =============================================
--- VISUAL TAB
+-- VISUAL
 -- =============================================
-local VisualTab = Window:Tab({ Title = "VISUAL", Icon = "eye" })
-local greenESP = true
-VisualTab:Toggle({ Title = "Green ESP", Flag = "greenesp", Value = true, Callback = function(v) greenESP = v end })
-RunService.Heartbeat:Connect(function()
+local Vis = Window:Tab({Title = "VISUAL", Icon = "eye"})
+local espAct = true
+Vis:Toggle({Title = "Ver Enemigos", Flag = "esp", Value = true, Callback = function(v) espAct = v end})
+loop(0.4, function()
     for _, p in ipairs(Players:GetPlayers()) do
         if p == LocalPlayer then continue end
-        local c = p.Character
-        if not c then continue end
-        local hl = c:FindFirstChild("NebulaGreenHL")
-        if greenESP then
+        if not p.Character then continue end
+        local hl = p.Character:FindFirstChild("NebulaHL")
+        if espAct then
             if not hl then
-                hl = Instance.new("Highlight", c)
-                hl.Name = "NebulaGreenHL"
+                hl = Instance.new("Highlight", p.Character)
+                hl.Name = "NebulaHL"
                 hl.FillColor = Color3.fromRGB(0, 255, 70)
                 hl.OutlineColor = Color3.fromRGB(180, 255, 180)
-                hl.FillTransparency = 0.32
+                hl.FillTransparency = 0.3
                 hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
             end
         else
@@ -429,19 +267,13 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- =============================================
--- SERVER TAB
+-- SERVIDOR
 -- =============================================
-local ServerTab = Window:Tab({ Title = "SERVER", Icon = "server" })
-ServerTab:Button({ Title = "Copy JobId", Callback = function() pcall(function() setclipboard(game.JobId) end) end })
-ServerTab:Button({ Title = "Rejoin", Callback = function()
+local Serv = Window:Tab({Title = "SERVIDOR", Icon = "server"})
+Serv:Button({Title = "Copiar ID", Callback = function() pcall(function() setclipboard(game.JobId) end) end})
+Serv:Button({Title = "Reentrar", Callback = function()
     game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
-end })
+end})
 
 -- =============================================
--- FINAL
--- =============================================
-print("[NebulaHub] ✅ Cargado completamente")
-end
-
-local ok, err = pcall(LoadNebulaHub)
-if not ok then warn("[NebulaHub] Error: "..tostring(err)) end
+print("[NebulaHub] ✅ CARGADO COMPLETO — DELTA")
