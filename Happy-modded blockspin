@@ -1,419 +1,447 @@
--- HAPPY-MODDED HUB | Block Spin - LÓGICA COMPLETA PARTE 1/2
--- =============================================================
+-- =============================================
+-- NEBULA HUB | Block Spin — PARTE 1/2
+-- =============================================
+if not game:IsLoaded() then repeat task.wait(0.05) until game:IsLoaded() end
 
-if not game:IsLoaded() then repeat task.wait() until game:IsLoaded() end
-if not (game.PlaceId == 104715542330896 or game.PlaceId == 97556409405464) then return end
+local function LoadNebulaHub()
 
-local function LoadHappyHub()
+-- =============================================
+-- NETWORK / CONECTION LAYER
+-- =============================================
+local v_u_1 = {}
+local v_u_5 = {}
+local v_u_6 = false
+local v_u_7 = {}
 
--- Bypasses
-pcall(function()
-    local RS = game:GetService("ReplicatedStorage")
-    local TransitionModule = require(RS.Modules.Game.UI.TransitionUI)
-    local old_transition = TransitionModule.transition
-    TransitionModule.transition = function(p_in, p_wait, p_out, noLogo)
-        if old_transition then return old_transition(p_in, p_wait, p_out, noLogo) end
+function v_u_1.on_connect(p8)
+    if v_u_6 then p8() else v_u_7[#v_u_7 + 1] = p8 end
+end
+
+function v_u_1.hook(name, func)
+    if not func then error("Function nil for hook "..name) end
+    if v_u_6 then
+        if v_u_5[name] then warn("Overwriting hook: "..name) end
+        v_u_5[name] = func
+    else
+        v_u_1.on_connect(function() v_u_1.hook(name, func) end)
     end
-end)
+end
 
-pcall(function()
-    local CharCreator = require(game:GetService("ReplicatedStorage").Modules.Game.CharacterCreator.CharacterCreator)
-    if CharCreator.start then CharCreator.start = function(...) while true do task.wait(1) end end end
-end)
-
-pcall(function() if getgenv then getgenv().identifyexecutor = nil end end)
-
--- Servicios Globale
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Net = require(ReplicatedStorage.Modules.Core.Net)
+local v_u_3 = Net
+
+task.wait(0.05)
+local v_u_20 = v_u_3.send
+local v_u_21 = v_u_3.send.FireServer
+local v_u_4 = { event = 0, func = 0 }
+
+function v_u_1.send(name, ...)
+    v_u_4.event += 1
+    v_u_21(v_u_20, v_u_4.event, name, ...)
+end
+
+local v_u_23 = v_u_3.get
+local v_u_24 = v_u_3.get.InvokeServer
+function v_u_1.get(name, ...)
+    v_u_4.func += 1
+    return v_u_24(v_u_23, v_u_4.func, name, ...)
+end
+
+local function v_u_29()
+    v_u_3.send.OnClientEvent:Connect(function(name, ...)
+        if v_u_5[name] then v_u_5[name](...) end
+    end)
+    function v_u_3.get.OnClientInvoke(name, ...)
+        if v_u_5[name] then return v_u_5[name](...) end
+        error("Invalid hook: "..name)
+    end
+    pcall(function()
+        for i = 1, #v_u_7 do v_u_7[i]() end
+    end)
+end
+
+function v_u_1.loaded()
+    function v_u_3.get.OnClientInvoke(name)
+        if name == "connect" then
+            v_u_6 = true
+            v_u_29()
+            return true
+        end
+    end
+    v_u_1.hook("ping", function() return true end)
+end
+
+print("bypassed")
+
+-- =============================================
+-- SERVICES & MODULES
+-- =============================================
+local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
 local CoreGui = game:GetService("CoreGui")
 local CurrentCamera = workspace.CurrentCamera
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-local Net = require(ReplicatedStorage.Modules.Core.Net)
+local Character, Humanoid, RootPart, Backpack
 
-_G.Settings = {
-    WalkSpeed = 35, EnableSpeed = false, FlyJump = false,
-    InfStamina = false, AutoMansion = false, AntiLock = false,
-    AntiRagdoll = false, Underground = false, SnapHeight = -10,
-    SilentAim = false, AimSafe = false, AimPecho = false, ShowFOV = true, FOVSize = 120,
-    SafeFriends = {}, AntiKill = false, AutoMask = false, AutoHealth = false, HitAura = false,
-    AutoMinigame = false, BumpAura = false, GreenESP = true, ESPZone = false,
-    HideName = false, ESPHacker = false, InvViewer = false, DropViewer = false,
-    SkipAnim = false, InfHotbar = false, Blacklist = {}
-}
+local function updateChar()
+    Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    Humanoid = Character:WaitForChild("Humanoid")
+    RootPart = Character:WaitForChild("HumanoidRootPart")
+    Backpack = LocalPlayer:WaitForChild("Backpack")
+end
+updateChar()
+LocalPlayer.CharacterAdded:Connect(updateChar)
 
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local RootPart = Character:WaitForChild("HumanoidRootPart")
+local CharModule = require(ReplicatedStorage.Modules.Core.Char)
+local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
+local RagdollModule = require(ReplicatedStorage.Modules.Game.Ragdoll)
+local Vechine = require(ReplicatedStorage.Modules.Game.VehicleSystem.Vehicle)
 
-LocalPlayer.CharacterAdded:Connect(function(nChar)
-    Character = nChar
-    Humanoid = nChar:WaitForChild("Humanoid")
-    RootPart = nChar:WaitForChild("HumanoidRootPart")
-end)
+-- =============================================
+-- HELPERS
+-- =============================================
+local function safeCall(fn, ...)
+    local ok, a, b, c = pcall(fn, ...)
+    if ok then return a, b, c end
+end
 
 local function permanentLoop(interval, fn)
     task.spawn(function()
-        while true do
-            pcall(fn)
-            task.wait(interval or 0.25)
-        end
+        local t = interval or 0.25
+        while true do pcall(fn) task.wait(t) end
     end)
+end
+
+local function safeHttpGet(url)
+    local ok, res = pcall(function() return game:HttpGet(url) end)
+    if ok then return res end
+    ok, res = pcall(function() return game:HttpGetAsync(url) end)
+    return ok and res
 end
 
 local function safeLoadUrl(url)
-    local ok, res = pcall(function() return game:HttpGet(url) end)
-    if ok and res then
-        local ok2, fn = pcall(loadstring, res)
-        if ok2 and fn then return fn() end
-    end
-    return nil
+    local src = safeHttpGet(url)
+    if not src then return end
+    local ok, fn = pcall(loadstring, src)
+    if ok and fn then return fn() end
 end
 
+local safeHook = pcall(function() return hookfunction end) or function(old, new) return old end
+local function safeDraw(class)
+    local ok, obj = pcall(function() return Drawing and Drawing.new and Drawing.new(class) end)
+    return ok and obj
+end
+
+-- =============================================
+-- LOAD UI LIBRARY
+-- =============================================
 local WindUI = safeLoadUrl("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua")
-if not WindUI then return end
+if not WindUI then warn("WindUI failed to load") return end
 
--- Corrección de Capa Superior para desplegables (Dropdown Fix)
+local Icons = safeLoadUrl("https://raw.githubusercontent.com/Footagesus/Icons/main/Main.lua")
+if Icons and Icons.SetIconsType then Icons.SetIconsType("lucide") end
+
 local Window = WindUI:CreateWindow({
-    Icon = "rbxassetid://74826351036046", Title = "HAPPY-MODDED HUB | Block Spin",
-    Author = "by HAPPY-MODDED", Folder = "happy_modded", Size = UDim2.fromOffset(540, 420),
-    Transparent = true, Theme = "Dark", Resizable = true, SideBarWidth = 160, OpenButton = { Enabled = false }
+    Icon = "rbxassetid://74826351036046",
+    Title = "NEBULA HUB | Block Spin",
+    Author = "by Nebula.lua",
+    Folder = "nebula's",
+    Size = UDim2.fromOffset(480, 360),
+    MinSize = Vector2.new(400, 300),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 165,
+    OpenButton = { Enabled = false }
 })
+Window:Tag({ Title = "V0.2", Color = Color3.fromHex("#00E5FF"), Radius = 13 })
 
-Window:Tag({ Title = "V3.9 FULL", Color = Color3.fromHex("#00E5FF"), Radius = 13 })
-
--- Botón Flotante
-if CoreGui:FindFirstChild("HappyHubButton") then CoreGui.HappyHubButton:Destroy() end
+-- =============================================
+-- FLOATING BUTTON
+-- =============================================
+if CoreGui:FindFirstChild("NebulaHubButton") then CoreGui.NebulaHubButton:Destroy() end
 local ScreenGui = Instance.new("ScreenGui", CoreGui)
-ScreenGui.Name = "HappyHubButton"
-ScreenGui.DisplayOrder = 999
-local ImageButton = Instance.new("ImageButton", ScreenGui)
-ImageButton.BackgroundColor3 = Color3.fromRGB(12, 14, 22)
-ImageButton.Position = UDim2.new(0.5, -22, 0, 10)
-ImageButton.Size = UDim2.new(0, 45, 0, 45)
-ImageButton.Image = "rbxassetid://74826351036046"
-Instance.new("UICorner", ImageButton).CornerRadius = UDim.new(0, 8)
-local UIStroke = Instance.new("UIStroke", ImageButton)
-UIStroke.Color, UIStroke.Thickness = Color3.fromRGB(0, 229, 255), 2.5
+ScreenGui.Name = "NebulaHubButton"
+ScreenGui.IgnoreGuiInset = true
 
-local dragging, dragStart, startPos, hasDragged, isOpen = false, nil, nil, false, true
-ImageButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging, dragStart, startPos, hasDragged = true, input.Position, ImageButton.Position, false
+local Btn = Instance.new("ImageButton", ScreenGui)
+Btn.BackgroundColor3 = Color3.fromRGB(12, 14, 22)
+Btn.Position = UDim2.new(0.5, -22, 0, 10)
+Btn.Size = UDim2.new(0, 45, 0, 45)
+Btn.Image = "rbxassetid://74826351036046"
+Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 8)
+local stroke = Instance.new("UIStroke", Btn)
+stroke.Color = Color3.fromRGB(0, 229, 255)
+stroke.Thickness = 2.5
+
+local dragging, startPos, dragPos, isOpen = false, nil, nil, true
+Btn.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragPos = i.Position; startPos = Btn.Position
     end
 end)
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        if math.abs(delta.X) + math.abs(delta.Y) > 5 then hasDragged = true end
-        ImageButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+UserInputService.InputChanged:Connect(function(i)
+    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+        local d = i.Position - dragPos
+        Btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
     end
 end)
-UserInputService.InputEnded:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+UserInputService.InputEnded:Connect(function(i)
+    if dragging then
         dragging = false
-        if not hasDragged then isOpen = not isOpen; if isOpen then Window:Open() else Window:Close() end end
+        if math.abs(i.Position.X - dragPos.X) + math.abs(i.Position.Y - dragPos.Y) < 5 then
+            isOpen = not isOpen; isOpen and Window:Open() or Window:Close()
+        end
     end
 end)
 
--- Obtención en tiempo real para Listas Desplegables
-local function getOnlinePlayers()
-    local list = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then table.insert(list, p.Name) end
+-- =============================================
+-- MAIN TAB — PLAYER & MOVEMENT
+-- =============================================
+local MainTab = Window:Tab({ Title = "GENERAL", Icon = "globe" })
+MainTab:Section({ Title = "Player" })
+
+local function getHandMoney()
+    return tonumber(PlayerGui:FindFirstChild("TopRightHud", true) and PlayerGui.TopRightHud.Holder.Frame.MoneyTextLabel.Text:match("%$(%d+)")) or 0
+end
+local function getBankMoney()
+    for _, v in ipairs(PlayerGui:GetDescendants()) do
+        if v:IsA("TextLabel") and string.find(v.Text, "Bank Balance") then
+            return tonumber(v.Text:match("%$(%d+)")) or 0
+        end
     end
-    return #list > 0 and list or {"Sin jugadores"}
+    return 0
 end
 
--- =====================================================
--- 1. GENERAL TAB
--- =====================================================
-local MainTab = Window:Tab({ Title = "GENERAL", Icon = "globe" })
-MainTab:Section({ Title = "Balances & Modifiers" })
-local BankBalance = MainTab:Button({ Title = "🏦 Bank Balance", Desc = "Cargando..." })
-local HandBalance = MainTab:Button({ Title = "💸 Hand Balance", Desc = "Cargando..." })
-
-permanentLoop(0.4, function()
-    local handVal = "0"
-    pcall(function() handVal = PlayerGui.TopRightHud.Holder.Frame.MoneyTextLabel.Text:match("%$(%d+)") or "0" end)
-    HandBalance:SetDesc('<b><font color="#00f2ff">$' .. handVal .. "</font></b>")
-    
-    local bankVal = "0"
-    pcall(function()
-        for _, v in ipairs(PlayerGui:GetDescendants()) do
-            if v:IsA("TextLabel") and string.find(v.Text, "Bank Balance") then bankVal = v.Text:match("%$(%d+)") or "0" break end
-        end
-    end)
-    BankBalance:SetDesc('<b><font color="#00FF00">$' .. bankVal .. "</font></b>")
+local BankBtn = MainTab:Button({ Title = "🏦 Bank Balance", Desc = "—" })
+local HandBtn = MainTab:Button({ Title = "💸 Hand Balance", Desc = "—" })
+permanentLoop(0.6, function()
+    BankBtn:SetDesc('<b><font color="#00FF00">$'..getBankMoney()..'</font></b>')
+    HandBtn:SetDesc('<b><font color="#00f2ff">$'..getHandMoney()..'</font></b>')
 end)
 
-RunService.RenderStepped:Connect(function()
-    if _G.Settings.EnableSpeed and Humanoid then
-        Humanoid.WalkSpeed = _G.Settings.WalkSpeed
-    end
-end)
-
-permanentLoop(0.2, function()
-    if _G.Settings.EnableSpeed then Net.send("set_sprinting_1", true) end
-    if _G.Settings.InfStamina then Net.send("stamina_consume", 0) end
-end)
-
-MainTab:Toggle({ Title = "Walk Speed", Flag = "ws_enabled", Value = false, Callback = function(v)
-    _G.Settings.EnableSpeed = v
+-- Speed
+local speedVal, speedOn = 35, false
+MainTab:Toggle({ Title = "Walk Speed", Flag = "ws", Value = false, Callback = function(v)
+    speedOn = v
     if not v and Humanoid then Humanoid.WalkSpeed = 16 end
 end })
-MainTab:Slider({ Title = "Speed Value", Flag = "ws_value", Step = 1, Value = { Min = 8, Max = 100, Default = 35 }, Callback = function(v) _G.Settings.WalkSpeed = v end })
+MainTab:Slider({ Title = "Speed Value", Flag = "ws_val", Step = 1, Value = { Min = 8, Max = 45, Default = 35 },
+    Callback = function(v) speedVal = v end })
+permanentLoop(0.25, function()
+    if speedOn and Humanoid then
+        Net.send("set_sprinting_1", true)
+        Humanoid.WalkSpeed = speedVal
+    end
+end)
 
-MainTab:Toggle({ Title = "Fly Jump", Flag = "flyjump", Value = false, Callback = function(v) _G.Settings.FlyJump = v end })
+-- Fly Jump
+local flyOn = false
+MainTab:Toggle({ Title = "Fly Jump", Flag = "flyjump", Value = false, Callback = function(v) flyOn = v end })
 UserInputService.JumpRequest:Connect(function()
-    if _G.Settings.FlyJump and RootPart then RootPart.AssemblyLinearVelocity = Vector3.new(RootPart.AssemblyLinearVelocity.X, 55, RootPart.AssemblyLinearVelocity.Z) end
-end)
-
-MainTab:Section({ Title = "SPIN & Stamina System" })
-MainTab:Button({ Title = "🎲 Auto SPIN", Desc = "Ejecutar Spin directo", Callback = function() Net.send("spin_wheel") end })
-MainTab:Toggle({ Title = "⚡ Infinite Stamina", Flag = "inf_stamina", Value = false, Callback = function(v) _G.Settings.InfStamina = v end })
-
-MainTab:Section({ Title = "Mansion & Utility" })
-permanentLoop(1, function()
-    if _G.Settings.AutoMansion then
-        for _, item in ipairs(workspace:GetDescendants()) do
-            if item.Name == "MansionChest" or item.Name == "MansionReward" then
-                Net.get("claim_mansion_reward", item)
-            end
-        end
+    if flyOn and RootPart then
+        local v = RootPart.AssemblyLinearVelocity
+        RootPart.AssemblyLinearVelocity = Vector3.new(v.X, 55, v.Z)
     end
 end)
 
-MainTab:Toggle({ Title = "🏠 Auto Recolect Mansion", Flag = "auto_mansion", Value = false, Callback = function(v) _G.Settings.AutoMansion = v end })
-local BlacklistDropdown = MainTab:Dropdown({ Title = "Blacklist Rarity", Multi = true, Options = { "Common", "Rare", "Epic", "Legendary" }, Callback = function(v) _G.Settings.Blacklist = v end })
-
-MainTab:Section({ Title = "Bypasses & Physics" })
-MainTab:Toggle({ Title = "🔒 Anti Lock", Flag = "anti_lock", Value = false, Callback = function(v) _G.Settings.AntiLock = v end })
-MainTab:Toggle({ Title = "💫 Anti Ragdoll", Flag = "anti_ragdoll", Value = false, Callback = function(v) _G.Settings.AntiRagdoll = v end })
-
-RunService.Stepped:Connect(function()
-    if _G.Settings.AntiRagdoll and Character then
-        local ragdoll = Character:FindFirstChild("Ragdoll") or Character:FindFirstChild("IsRagdolled")
-        if ragdoll then ragdoll:Destroy() end
+-- Spin
+local spinOn, spinAngle = false, 0
+local function doSpin(dt)
+    if not spinOn then return end
+    spinAngle += 0.65 * 60 * dt
+    spinAngle %= math.pi*2
+    if RootPart then
+        RootPart.CFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, spinAngle, 0)
+        if Humanoid then Humanoid.AutoRotate = false end
     end
-    if _G.Settings.Underground and RootPart then
-        RootPart.CFrame = RootPart.CFrame * CFrame.new(0, _G.Settings.SnapHeight / 20, 0)
-    end
+end
+MainTab:Toggle({ Title = "SPIN", Flag = "spin", Desc = "Gira sin parar", Callback = function(v)
+    spinOn = v
+    if v then RunService.RenderStepped:Connect(doSpin) end
+end })
+
+-- Infinite Stamina
+local infStamina = false
+MainTab:Toggle({ Title = "Infinite Stamina", Flag = "infstam", Callback = function(v) infStamina = v end })
+permanentLoop(0.1, function()
+    if infStamina then Net.send("set_sprinting_1", true) end
 end)
 
-MainTab:Toggle({ Title = "🕳️ Underground Mode", Flag = "underground", Value = false, Callback = function(v) _G.Settings.Underground = v end })
-MainTab:Slider({ Title = "Snap Height", Flag = "snap_height", Step = 1, Value = { Min = -50, Max = 50, Default = -10 }, Callback = function(v) _G.Settings.SnapHeight = v end })
-
--- =====================================================
--- 2. COMBAT TAB
--- =====================================================
-local CombatTab = Window:Tab({ Title = "COMBAT", Icon = "swords" })
-CombatTab:Section({ Title = "Aimbot & Targeting" })
-CombatTab:Toggle({ Title = "Silent Aim", Flag = "silent_aim", Value = false, Callback = function(v) _G.Settings.SilentAim = v end })
-CombatTab:Toggle({ Title = "AIM MORE SAFE", Flag = "aim_safe", Value = false, Callback = function(v) _G.Settings.AimSafe = v end })
-CombatTab:Toggle({ Title = "AIM PECHO", Flag = "aim_pecho", Value = false, Callback = function(v) _G.Settings.AimPecho = v end })
-CombatTab:Toggle({ Title = "Show FOV Circle", Flag = "show_fov", Value = true, Callback = function(v) _G.Settings.ShowFOV = v end })
-
-local SafeFriendsDropdown = CombatTab:Dropdown({ Title = "Safe Friends (Whitelisting)", Multi = true, Options = getPlayerList(), Callback = function(v) _G.Settings.SafeFriends = v end })
-
--- Actualizador de listas desplegables
-Players.PlayerAdded:Connect(function() SafeFriendsDropdown:SetOptions(getPlayerList()) end)
-Players.PlayerRemoving:Connect(function() SafeFriendsDropdown:SetOptions(getPlayerList()) end)
-
-CombatTab:Section({ Title = "Defense & Combat Utilities" })
-CombatTab:Toggle({ Title = "Anti Kill / Downed Protection", Flag = "anti_kill", Value = false, Callback = function(v) _G.Settings.AntiKill = v end })
-CombatTab:Toggle({ Title = "🎭 Auto Mask", Flag = "auto_mask", Value = false, Callback = function(v) _G.Settings.AutoMask = v end })
-CombatTab:Toggle({ Title = "💉 Auto Health / Medkit", Flag = "auto_health", Value = false, Callback = function(v) _G.Settings.AutoHealth = v end })
-CombatTab:Toggle({ Title = "⚔️ Hit Aura", Flag = "hit_aura", Value = false, Callback = function(v) _G.Settings.HitAura = v end })
-
+-- Anti Ragdoll
+local antiRagdoll = false
+MainTab:Toggle({ Title = "Anti Ragdoll", Flag = "antird", Callback = function(v) antiRagdoll = v end })
 permanentLoop(0.2, function()
-    if _G.Settings.AutoMask then Net.send("equip_mask") end
-    if _G.Settings.AutoHealth and Humanoid and Humanoid.Health < (Humanoid.MaxHealth * 0.6) then
-        Net.send("use_medkit")
-    end
-    if _G.Settings.HitAura and RootPart then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local dist = (p.Character.HumanoidRootPart.Position - RootPart.Position).Magnitude
-                if dist < 14 and not table.find(_G.Settings.SafeFriends, p.Name) then
-                    Net.send("melee_swing", p.Character)
-                end
+    if antiRagdoll then
+        pcall(function()
+            if RagdollModule.is_ragdolling.get() then
+                RagdollModule.is_ragdolling.set(false)
+                Net.send("end_ragdoll_early")
+                Net.send("clear_ragdoll")
             end
-        end
-    end
-end)
--- =====================================================
--- HAPPY-MODDED HUB | Block Spin - LÓGICA COMPLETA PARTE 2/2
--- =====================================================
-
--- =====================================================
--- 3. FARM TAB
--- =====================================================
-local FarmTab = Window:Tab({ Title = "FARM", Icon = "package" })
-FarmTab:Section({ Title = "Minigame Automation" })
-
-permanentLoop(0.05, function()
-    if _G.Settings.AutoMinigame then
-        local minigame = PlayerGui:FindFirstChild("MinigameUI") or PlayerGui:FindFirstChild("SliderMinigame")
-        if minigame then
-            Net.send("minigame_success")
-            Net.send("slider_minigame_win")
-        end
+        end)
     end
 end)
 
-FarmTab:Toggle({ Title = "Auto Minigame (Slider Detection)", Flag = "auto_mini", Value = false, Callback = function(v) _G.Settings.AutoMinigame = v end })
-FarmTab:Button({ Title = "💰 Claim Free Rewards / Bonus", Callback = function() Net.get("claim_daily_reward") end })
+-- Underground
+local underOn, underOffset = false, 70
+MainTab:Toggle({ Title = "Underground", Flag = "under", Callback = function(v) underOn = v end })
+MainTab:Slider({ Title = "Snap Height", Flag = "snap", Value = { Min = 1, Max = 100, Default = 70 },
+    Callback = function(v) underOffset = v end })
+RunService.Heartbeat:Connect(function()
+    if underOn and RootPart then
+        RootPart.CFrame *= CFrame.new(0, -underOffset/20, 0)
+    end
+end)
+-- =============================================
+-- NEBULA HUB | Block Spin — PARTE 2/2
+-- =============================================
+-- CONTINUACIÓN del script anterior
 
--- =====================================================
--- 4. SHOP TAB
--- =====================================================
-local ShopTab = Window:Tab({ Title = "SHOP", Icon = "shopping-cart" })
-ShopTab:Section({ Title = "Guns & Ammo Dealer" })
-local selectedAmmo = "Pistol"
+-- =============================================
+-- COMBAT TAB
+-- =============================================
+local CombatTab = Window:Tab({ Title = "COMBAT", Icon = "swords" })
+CombatTab:Section({ Title = "GUN" })
 
-ShopTab:Dropdown({ Title = "Tipo de Bala", Options = { "Pistol", "Rifle", "Shotgun", "Random" }, Callback = function(v) selectedAmmo = v end })
-ShopTab:Button({ Title = "🛒 BUY AMMO", Callback = function() Net.send("buy_ammo", selectedAmmo) end })
+local silentAim, fovVal = false, 120
+local aimPecho, aimSafe = false, false
+local safeFriends = {}
 
--- =====================================================
--- 5. VEHICLE TAB
--- =====================================================
-local VehicleTab = Window:Tab({ Title = "VEHICLE", Icon = "car" })
-VehicleTab:Section({ Title = "Vehicle Utilities" })
+CombatTab:Toggle({ Title = "Silent Aim", Flag = "silent", Callback = function(v) silentAim = v end })
+CombatTab:Toggle({ Title = "AIM PECHO", Flag = "pecho", Callback = function(v) aimPecho = v end })
+CombatTab:Toggle({ Title = "AIM MORE SAFE", Flag = "safemode", Callback = function(v) aimSafe = v end })
+CombatTab:Slider({ Title = "FOV", Flag = "fov", Value = { Min = 50, Max = 500, Default = 120 },
+    Callback = function(v) fovVal = v end })
 
+local function getPlayerList()
+    local t = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(t, p.Name) end
+    end
+    return t
+end
+local friendDropdown = CombatTab:Dropdown({ Title = "Safe Friends", Multi = true, Options = getPlayerList(),
+    Callback = function(v)
+        safeFriends = {}
+        for _, n in ipairs(v) do safeFriends[n] = true end
+    end
+})
+Players.PlayerAdded:Connect(function() friendDropdown:SetOptions(getPlayerList()) end)
+Players.PlayerRemoving:Connect(function() friendDropdown:SetOptions(getPlayerList()) end)
+
+-- Anti Kill
+local antiKill = false
+CombatTab:Toggle({ Title = "Anti Kill", Flag = "antikill", Callback = function(v) antiKill = v end })
 permanentLoop(0.15, function()
-    if _G.Settings.BumpAura and Character then
-        for _, v in ipairs(workspace:GetChildren()) do
-            if v:IsA("Model") and v ~= Character and v:FindFirstChild("HumanoidRootPart") then
-                local dist = (v.HumanoidRootPart.Position - RootPart.Position).Magnitude
-                if dist < 20 then
-                    Net.send("vehicle_bump", v)
-                end
+    if not antiKill then return end
+    local downed = Humanoid and (Humanoid:GetAttribute("IsDowned") or Humanoid:GetAttribute("HasBeenDowned"))
+    if downed and RootPart then
+        RootPart.CFrame = RootPart.CFrame * CFrame.new(0, -50, 0)
+        task.wait(0.5)
+        RootPart.CFrame = RootPart.CFrame * CFrame.new(0, 55, 0)
+    end
+end)
+
+-- Hit Aura
+local hitAura = false
+CombatTab:Toggle({ Title = "Hit Aura", Flag = "hitaura", Callback = function(v) hitAura = v end })
+permanentLoop(0.15, function()
+    if not hitAura or not RootPart then return end
+    local fists = Character:FindFirstChild("Fists")
+    if not fists then return end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (p.Character.HumanoidRootPart.Position - RootPart.Position).Magnitude
+            if dist < 20 and not safeFriends[p.Name] then
+                Net.send("melee_attack", fists, {p}, p.Character.HumanoidRootPart.CFrame, 0)
             end
         end
     end
 end)
 
-VehicleTab:Toggle({ Title = "💥 Bump Aura", Flag = "bump_aura", Value = false, Callback = function(v) _G.Settings.BumpAura = v end })
+-- =============================================
+-- FARM TAB
+-- =============================================
+local FarmTab = Window:Tab({ Title = "FARM", Icon = "package" })
+local autoMini = false
+FarmTab:Toggle({ Title = "Auto Minigame", Flag = "automini", Callback = function(v) autoMini = v end })
+permanentLoop(0.1, function()
+    if not autoMini then return end
+    pcall(function()
+        local m = ReplicatedStorage.Modules.Game.Minigames.SliderMinigame
+        if m.enabled and m.enabled.get() then
+            m.needle_pos.set(m.target_pos.get())
+        end
+    end)
+end)
 
--- =====================================================
--- 6. VISUAL TAB
--- =====================================================
+-- Auto Recolect Mansion
+local autoRec = false
+FarmTab:Toggle({ Title = "Auto Recolect Mansion", Flag = "autorec", Callback = function(v) autoRec = v end })
+permanentLoop(0.18, function()
+    if not autoRec then return end
+    local dropFolder = workspace:FindFirstChild("DroppedItems")
+    if not dropFolder or not RootPart then return end
+    for _, item in ipairs(dropFolder:GetChildren()) do
+        if item:GetAttribute("Locked") then continue end
+        local part = item:FindFirstChild("PickUpZone") or item:FindFirstChildWhichIsA("BasePart")
+        if part and (part.Position - RootPart.Position).Magnitude < 55 then
+            Net.get("pickup_dropped_item", item)
+            if (part.Position - RootPart.Position).Magnitude > 6 then
+                RootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 2.3, 0))
+            end
+        end
+    end
+end)
+
+-- =============================================
+-- VISUAL TAB
+-- =============================================
 local VisualTab = Window:Tab({ Title = "VISUAL", Icon = "eye" })
-VisualTab:Section({ Title = "ESP & Environmental Modules" })
-
-VisualTab:Toggle({ Title = "ESP HAPPY-MODDED (Name, Health, Distance)", Flag = "esp_main", Value = false, Callback = function(v) end })
-VisualTab:Toggle({ Title = "Green ESP (Chams)", Flag = "green_esp", Value = true, Callback = function(v) _G.Settings.GreenESP = v end })
-VisualTab:Toggle({ Title = "ESP Zone", Flag = "esp_zone", Value = false, Callback = function(v) _G.Settings.ESPZone = v end })
-VisualTab:Toggle({ Title = "Hide Name", Flag = "hide_name", Value = false, Callback = function(v)
-    _G.Settings.HideName = v
-    if Character and Character:FindFirstChild("Head") and Character.Head:FindFirstChild("Nametag") then
-        Character.Head.Nametag.Visible = not v
-    end
-end })
-
-VisualTab:Section({ Title = "Viewers" })
-VisualTab:Toggle({ Title = "🎒 Inventory Viewer", Flag = "inv_viewer", Value = false, Callback = function(v) _G.Settings.InvViewer = v end })
-VisualTab:Toggle({ Title = "📦 Drop Item Viewer", Flag = "drop_viewer", Value = false, Callback = function(v) _G.Settings.DropViewer = v end })
-
-RunService.RenderStepped:Connect(function()
-    if _G.Settings.GreenESP then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                local hl = player.Character:FindFirstChild("HappyGreenHL")
-                if not hl then
-                    hl = Instance.new("Highlight", player.Character)
-                    hl.Name = "HappyGreenHL"
-                    hl.FillColor = Color3.fromRGB(0, 255, 70)
-                    hl.OutlineColor = Color3.fromRGB(180, 255, 180)
-                    hl.FillTransparency = 0.4
-                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                end
+local greenESP = true
+VisualTab:Toggle({ Title = "Green ESP", Flag = "greenesp", Value = true, Callback = function(v) greenESP = v end })
+RunService.Heartbeat:Connect(function()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        local c = p.Character
+        if not c then continue end
+        local hl = c:FindFirstChild("NebulaGreenHL")
+        if greenESP then
+            if not hl then
+                hl = Instance.new("Highlight", c)
+                hl.Name = "NebulaGreenHL"
+                hl.FillColor = Color3.fromRGB(0, 255, 70)
+                hl.OutlineColor = Color3.fromRGB(180, 255, 180)
+                hl.FillTransparency = 0.32
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
             end
-        end
-    else
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player.Character and player.Character:FindFirstChild("HappyGreenHL") then
-                player.Character.HappyGreenHL:Destroy()
-            end
+        else
+            if hl then hl:Destroy() end
         end
     end
 end)
 
--- =====================================================
--- 7. MISC TAB
--- =====================================================
-local MiscTab = Window:Tab({ Title = "MISC", Icon = "sliders" })
-MiscTab:Section({ Title = "Performance & Client Tweak" })
-MiscTab:Toggle({ Title = "⚡ Skip Animation", Flag = "skip_anim", Value = false, Callback = function(v) _G.Settings.SkipAnim = v end })
-MiscTab:Toggle({ Title = "🎒 Infinite Hotbar", Flag = "inf_hotbar", Value = false, Callback = function(v) _G.Settings.InfHotbar = v end })
-
-MiscTab:Button({ Title = "🚀 Boost FPS", Callback = function()
-    for _, v in ipairs(game:GetDescendants()) do
-        if v:IsA("Part") or v:IsA("UnionOperation") or v:IsA("MeshPart") then
-            v.Material = Enum.Material.SmoothPlastic
-        elseif v:IsA("Decal") or v:IsA("Texture") then
-            v:Destroy()
-        end
-    end
-end })
-
--- =====================================================
--- 8. SPECTATE TAB
--- =====================================================
-local SpectateTab = Window:Tab({ Title = "SPECTATE", Icon = "video" })
-SpectateTab:Section({ Title = "Player Camera Follow" })
-local targetSpec = nil
-
-local SpectateDropdown = SpectateTab:Dropdown({ Title = "Select Player", Options = getPlayerList(), Callback = function(v) targetSpec = Players:FindFirstChild(v) end })
-Players.PlayerAdded:Connect(function() SpectateDropdown:SetOptions(getPlayerList()) end)
-Players.PlayerRemoving:Connect(function() SpectateDropdown:SetOptions(getPlayerList()) end)
-
-SpectateTab:Toggle({ Title = "Spectate Player", Flag = "spectate_on", Value = false, Callback = function(v)
-    if v and targetSpec and targetSpec.Character and targetSpec.Character:FindFirstChildOfClass("Humanoid") then
-        CurrentCamera.CameraSubject = targetSpec.Character:FindFirstChildOfClass("Humanoid")
-    else
-        if Humanoid then CurrentCamera.CameraSubject = Humanoid end
-    end
-end })
-
--- =====================================================
--- 9. SERVER TAB
--- =====================================================
+-- =============================================
+-- SERVER TAB
+-- =============================================
 local ServerTab = Window:Tab({ Title = "SERVER", Icon = "server" })
-ServerTab:Section({ Title = "Server Info & Hopping" })
-
-ServerTab:Button({ Title = "Copy Server JobId", Callback = function() pcall(function() setclipboard(game.JobId) end) end })
-ServerTab:Button({ Title = "Server Hop", Callback = function()
+ServerTab:Button({ Title = "Copy JobId", Callback = function() pcall(function() setclipboard(game.JobId) end) end })
+ServerTab:Button({ Title = "Rejoin", Callback = function()
     game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
 end })
 
--- =====================================================
--- 10. CONFIG TAB
--- =====================================================
-local ConfigTab = Window:Tab({ Title = "CONFIG", Icon = "settings" })
-ConfigTab:Section({ Title = "Configuration Manager" })
-local configName = "Default"
-
-ConfigTab:Dropdown({ Title = "Config Name", Options = {"Default", "PvP", "Farming"}, Callback = function(v) configName = v end })
-ConfigTab:Button({ Title = "💾 Save Config", Callback = function()
-    pcall(function() writefile("happy_hub_" .. configName .. ".json", game:GetService("HttpService"):JSONEncode(_G.Settings)) end)
-end })
-ConfigTab:Button({ Title = "📂 Load Config", Callback = function()
-    pcall(function()
-        if isfile("happy_hub_" .. configName .. ".json") then
-            _G.Settings = game:GetService("HttpService"):JSONEncode(readfile("happy_hub_" .. configName .. ".json"))
-        end
-    end)
-end })
-
-Window:SelectTab(1)
-print("[HAPPY-MODDED] ¡Todos los módulos y desplegables ajustados y funcionales!")
+-- =============================================
+-- FINAL
+-- =============================================
+print("[NebulaHub] ✅ Cargado completamente")
 end
 
-local success, err = pcall(LoadHappyHub)
-if not success then warn("[HAPPY-MODDED Error]: " .. tostring(err)) end
+local ok, err = pcall(LoadNebulaHub)
+if not ok then warn("[NebulaHub] Error: "..tostring(err)) end
