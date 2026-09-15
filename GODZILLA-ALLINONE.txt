@@ -1,6 +1,6 @@
 --[[
-  GODZILLA ALL-IN-ONE
-  WindUI v1.6.65 embedded + Godzilla cheat
+  ⚡ HAPPY HUB ⚡
+  WindUI v1.6.65 embedded + HAPPY HUB cheat
   No external HttpGet for WindUI required
 ]]
 
@@ -15689,9 +15689,9 @@ end
 local CreateWindow = v4.CreateWindow
 local uDim2 = UDim2.fromOffset(500, 300)
 local v9 = CreateWindow(v4, {
-	Title = "GODZILLA | (BETA)",
+	Title = "HAPPY HUB | BETA",
 	Icon = "zap",
-	Author = "eiei",
+	Author = "HAPPY-MODDED",
 	Folder = "GotHubFolder",
 	Size = uDim2,
 	Theme = "Light",
